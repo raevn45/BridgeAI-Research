@@ -65,13 +65,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
 )
 
-# Cap upload size (default 10 MB) to avoid unbounded request bodies.
-app.config["MAX_CONTENT_LENGTH"] = int(
-    os.getenv("MAX_UPLOAD_BYTES", 10 * 1024 * 1024)
-)
-
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 if not os.getenv("SECRET_KEY"):
     logger.warning(
@@ -222,8 +216,10 @@ def bridge_app():
                 if pdf_text is None:
                     return render_template(
                         "index.html",
-                        result="<p>That PDF could not be read. "
-                               "Please try a different file.</p>"
+                        result=render_markdown(
+                            "That PDF could not be read. "
+                            "Please try a different file."
+                        )
                     )
                 content += "\n\n" + pdf_text
 
@@ -233,8 +229,10 @@ def bridge_app():
                 if image is None:
                     return render_template(
                         "index.html",
-                        result="<p>That image could not be read. "
-                               "Please try a different file.</p>"
+                        result=render_markdown(
+                            "That image could not be read. "
+                            "Please try a different file."
+                        )
                     )
 
                 try:

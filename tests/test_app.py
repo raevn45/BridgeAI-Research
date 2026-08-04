@@ -15,6 +15,13 @@ def get_participants(db_path):
     return rows
 
 
+def start_study(client, passage_id="medical"):
+    """Give the client the session state a consenting participant would have."""
+    with client.session_transaction() as sess:
+        sess["passage_id"] = passage_id
+        sess["group"] = "control"
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -30,7 +37,19 @@ def get_participants(db_path):
     ],
 )
 def test_pages_render(client, path):
+    start_study(client)
     assert client.get(path).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/study/passage", "/study/quiz1", "/study/simplified", "/study/quiz2"],
+)
+def test_study_pages_redirect_without_consent(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/study/consent")
 
 
 def test_bridge_app_simplifies_pasted_text(client):
@@ -49,7 +68,7 @@ def test_bridge_app_prompts_when_no_input_given(client):
 
 
 def test_bridge_app_analyzes_uploaded_image(client, monkeypatch):
-    monkeypatch.setattr("app.Image.open", lambda stream: "fake-image")
+    monkeypatch.setattr("app.load_image", lambda stream: "fake-image")
 
     response = client.post(
         "/app",
@@ -95,7 +114,7 @@ def test_consent_post_assigns_session_state(client):
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/study/passage")
     assert session["first_name"] == "Ada"
-    assert session["age"] == "36"
+    assert session["age"] == 36
     assert session["passage_id"] in PASSAGES
     assert session["group"] in ("control", "treatment")
 
@@ -107,6 +126,7 @@ def test_consent_post_uses_defaults_when_fields_missing(client):
 
 
 def test_passage_post_redirects_to_quiz1(client):
+    start_study(client)
     response = client.post("/study/passage")
 
     assert response.headers["Location"].endswith("/study/quiz1")
@@ -116,13 +136,32 @@ def test_simplified_page_shows_rendered_markdown(client, monkeypatch):
     monkeypatch.setattr(
         "app.simplify_text", lambda text, audience: "## Heading\n\nbody"
     )
+    start_study(client)
 
     response = client.get("/study/simplified")
 
     assert b"<h2>Heading</h2>" in response.data
 
 
+def test_simplified_page_reuses_cached_simplification(client, monkeypatch):
+    calls = []
+
+    def fake_simplify(text, audience):
+        calls.append(text)
+        return "## Heading\n\nbody"
+
+    monkeypatch.setattr("app.simplify_text", fake_simplify)
+    start_study(client)
+
+    first = client.get("/study/simplified")
+    second = client.get("/study/simplified")
+
+    assert len(calls) == 1
+    assert first.data == second.data
+
+
 def test_simplified_post_redirects_to_quiz2(client):
+    start_study(client)
     response = client.post("/study/simplified")
 
     assert response.headers["Location"].endswith("/study/quiz2")
@@ -172,8 +211,7 @@ def test_quiz1_ignores_wrong_and_unanswered_questions(client):
     correct = questions[0]["answer"]
     wrong = (correct + 1) % len(questions[0]["options"])
 
-    with client.session_transaction() as sess:
-        sess["passage_id"] = "medical"
+    start_study(client)
 
     client.post("/study/quiz1", data={"q1": str(wrong)})
     assert session["quiz1_score"] == 0
