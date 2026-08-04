@@ -1,39 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BridgeAI Research</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
-</head>
+{% block title %}BridgeAI Research{% endblock %}
 
-<body>
+{% set tagline = "AI Comprehension Evaluation" %}
+{% set status_label = "STEP 2" %}
+{% set status_text = "Reading Passage" %}
 
-<div id="fog-bg"></div>
-<div class="noise"></div>
-<div id="cursor"></div>
-
-<header class="topbar">
-    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
-        <div class="logo-orb"></div>
-        <div>
-            <h2>BridgeAI Research</h2>
-            <p>AI Comprehension Evaluation</p>
-        </div>
-    </a>
-    <div class="status">
-        <div class="status-dot"></div>
-        <div>
-            <span>STEP 2</span>
-            <p>Reading Passage</p>
-        </div>
-    </div>
-</header>
-
+{% block content %}
 <main class="research-layout">
 
     <div class="glass passage-card">
@@ -89,24 +62,10 @@
     </div>
 
 </main>
+{% endblock %}
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
-
+{% block scripts %}
 <script>
-    VANTA.FOG({
-        el:"#fog-bg",
-        mouseControls:true,
-        touchControls:true,
-        gyroControls:false,
-        highlightColor:0x00ffff,
-        midtoneColor:0x6d28d9,
-        lowlightColor:0x030712,
-        baseColor:0x020617,
-        blurFactor:0.8,
-        speed:1.5,
-        zoom:0.7
-    });
-
     let seconds=120;
     const timer=document.getElementById("timer");
     setInterval(()=>{
@@ -118,6 +77,4 @@
         timer.innerHTML=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
     },1000);
 </script>
-
-</body>
-</html>
+{% endblock %}
