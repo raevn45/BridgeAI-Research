@@ -119,10 +119,22 @@ GEMINI_API_KEY=your_api_key_here
 SECRET_KEY=any_random_string_here
 ```
 
+Generate a strong `SECRET_KEY` with `python -c "import secrets; print(secrets.token_hex(32))"`.
+If it is not set, the app generates a random key at startup and existing sessions are dropped on restart.
+
+Optional environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | Interface the dev server binds to |
+| `PORT` | `5000` | Dev server port |
+| `FLASK_DEBUG` | `0` | Set to `1` for the debugger (never in production) |
+| `SESSION_COOKIE_SECURE` | `1` | Set to `0` only when testing over plain HTTP |
+
 Run the app locally:
 
 ```bash
-python app.py
+SESSION_COOKIE_SECURE=0 python app.py
 ```
 
 Visit `http://localhost:5000` in your browser.
@@ -166,7 +178,8 @@ https://raevn00.pythonanywhere.com/app
 
 ## Accessing Research Data
 
-Participant responses are stored in `research.db` (SQLite) at the project root.
+Participant responses are stored in `research.db` (SQLite) at the project root. The database
+contains participant data and is gitignored — never commit it.
 
 **On PythonAnywhere:**
 - Use the **Files** tab to download `research.db` directly
