@@ -49,7 +49,7 @@ def test_bridge_app_prompts_when_no_input_given(client):
 
 
 def test_bridge_app_analyzes_uploaded_image(client, monkeypatch):
-    monkeypatch.setattr("PIL.Image.open", lambda stream: "fake-image")
+    monkeypatch.setattr("app.Image.open", lambda stream: "fake-image")
 
     response = client.post(
         "/app",
@@ -69,7 +69,7 @@ def test_bridge_app_extracts_text_from_pdf(client, monkeypatch):
         def __init__(self, stream):
             self.pages = [FakePage(), FakePage()]
 
-    monkeypatch.setattr("pypdf.PdfReader", FakeReader)
+    monkeypatch.setattr("app.PdfReader", FakeReader)
     captured = {}
 
     def fake_simplify(text, audience):
