@@ -65,6 +65,11 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
 )
 
+# Cap upload size (default 10 MB) to avoid unbounded request bodies.
+app.config["MAX_CONTENT_LENGTH"] = int(
+    os.getenv("MAX_UPLOAD_BYTES", 10 * 1024 * 1024)
+)
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -294,6 +299,11 @@ def study_consent():
         # A/B testing group
         session["group"] = random.choice(["control", "treatment"])
 
+        # Drop any cached simplification from a previous run.
+        for key in [k for k in list(session.keys())
+                    if k.startswith("simplified_html:")]:
+            session.pop(key, None)
+
         return redirect(url_for("study_passage"))
 
     return render_template("participant.html")
@@ -337,22 +347,28 @@ def study_simplified():
     if request.method == "POST":
         return redirect(url_for("study_quiz2"))
 
-    passage = current_passage()
+    # Generate the simplified passage once per participant/passage and cache it
+    # in the session so page reloads don't trigger repeated (and differing)
+    # Gemini calls during the study.
+    cache_key = f"simplified_html:{session['passage_id']}"
+    simplified_html = session.get(cache_key)
 
-    try:
-        raw_ai_response = simplify_text(
-            passage["control_text"],
-            DEFAULT_AUDIENCE
-        )
-    except AIServiceError:
-        logger.exception(
-            "Study simplification failed for passage %s",
-            session["passage_id"]
-        )
-        return render_template(
-            "simplified.html",
-            simplified_text=AI_UNAVAILABLE_MESSAGE
-        )
+    if not simplified_html:
+        passage = current_passage()
+        try:
+            raw_ai_response = simplify_text(
+                passage["control_text"],
+                "General public"
+            )
+        except AIServiceError:
+            logger.exception(
+                "Study simplification failed for passage %s",
+                session["passage_id"]
+            )
+            return render_template(
+                "simplified.html",
+                simplified_text=AI_UNAVAILABLE_MESSAGE
+            )
 
     return render_template(
         "simplified.html",
@@ -408,7 +424,8 @@ def study_feedback():
                 confidence_before=session.get("confidence_before", 3),
                 quiz2_score=session.get("quiz2_score", 0),
                 confidence_after=session.get("confidence_after", 3),
-                feedback=feedback
+                feedback=feedback,
+                group_assignment=session.get("group")
             )
         except Exception:
             logger.exception("Could not save participant feedback")
@@ -440,5 +457,5 @@ if __name__ == "__main__":
     app.run(
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", 5000)),
-        debug=os.environ.get("FLASK_DEBUG", "0") == "1"
+        debug=os.getenv("FLASK_DEBUG") == "1"
     )

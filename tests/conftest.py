@@ -36,7 +36,9 @@ def client(temp_db, monkeypatch):
 
     flask_app = app_module.app
     flask_app.config["TESTING"] = True
-    flask_app.jinja_loader = FileSystemLoader(PROJECT_ROOT)
+    flask_app.jinja_loader = FileSystemLoader(
+        os.path.join(PROJECT_ROOT, "templates")
+    )
 
     with flask_app.test_client() as test_client:
         yield test_client

@@ -54,7 +54,8 @@ def save_participant_data(
     confidence_before,
     quiz2_score,
     confidence_after,
-    feedback
+    feedback,
+    group_assignment=None
 ):
     """Save a participant's research data to the database."""
     with get_cursor() as cursor:
@@ -63,16 +64,18 @@ def save_participant_data(
                 first_name,
                 age,
                 passage_id,
+                group_assignment,
                 quiz1_score,
                 confidence_before,
                 quiz2_score,
                 confidence_after,
                 feedback
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             first_name,
             age,
             passage_id,
+            group_assignment,
             quiz1_score,
             confidence_before,
             quiz2_score,
