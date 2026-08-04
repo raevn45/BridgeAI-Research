@@ -2,6 +2,9 @@ import os
 import random
 import markdown
 
+from PIL import Image
+from pypdf import PdfReader
+
 from flask import (
     Flask,
     render_template,
@@ -37,6 +40,48 @@ database.init_db()
 
 
 # ==========================================
+# SHARED HELPERS
+# ==========================================
+
+def current_passage():
+    """Return the passage assigned to the current session."""
+    return get_passage(session.get("passage_id", "medical"))
+
+
+def score_quiz(questions, form):
+    """Count how many submitted answers match the correct option index."""
+    score = 0
+
+    for index, question in enumerate(questions, start=1):
+        answer = form.get(f"q{index}")
+        if answer is not None and int(answer) == question["answer"]:
+            score += 1
+
+    return score
+
+
+def run_quiz_step(quiz_number, confidence_key, next_endpoint):
+    """Handle one comprehension quiz: score it, store it, move on."""
+    passage = current_passage()
+    questions = passage.get(f"quiz{quiz_number}_questions", [])
+
+    if request.method == "POST":
+        session[f"quiz{quiz_number}_score"] = score_quiz(
+            questions,
+            request.form
+        )
+        session[confidence_key] = int(request.form.get("confidence", 3))
+
+        return redirect(url_for(next_endpoint))
+
+    return render_template(
+        f"quiz{quiz_number}.html",
+        passage=passage,
+        questions=questions
+    )
+
+
+# ==========================================
 # BRIDGEAI PUBLIC TOOL
 # ==========================================
 
@@ -69,7 +114,6 @@ def bridge_app():
 
             # PDF PROCESSING
             if filename.endswith(".pdf"):
-                from pypdf import PdfReader
                 reader = PdfReader(uploaded_file)
                 pdf_text = ""
                 for page in reader.pages:
@@ -78,7 +122,6 @@ def bridge_app():
 
             # IMAGE PROCESSING
             elif filename.endswith((".png", ".jpg", ".jpeg")):
-                from PIL import Image
                 image = Image.open(uploaded_file)
                 ai_text = analyze_image(image, audience)
                 result = markdown.markdown(ai_text)
@@ -125,9 +168,8 @@ def study_consent():
 @app.route("/study/passage", methods=["GET", "POST"])
 def study_passage():
 
-    passage_id = session.get("passage_id", "medical")
     group = session.get("group", "control")
-    passage = get_passage(passage_id)
+    passage = current_passage()
 
     if request.method == "POST":
         return redirect(url_for("study_quiz1"))
@@ -138,26 +180,11 @@ def study_passage():
 @app.route("/study/quiz1", methods=["GET", "POST"])
 def study_quiz1():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
-    questions = passage.get("quiz1_questions", [])
-
-    if request.method == "POST":
-        score = 0
-        for index, question in enumerate(questions, start=1):
-            answer = request.form.get(f"q{index}")
-            if answer is not None:
-                if int(answer) == question["answer"]:
-                    score += 1
-
-        session["quiz1_score"] = score
-        session["confidence_before"] = int(
-            request.form.get("confidence", 3)
-        )
-
-        return redirect(url_for("study_simplified"))
-
-    return render_template("quiz1.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=1,
+        confidence_key="confidence_before",
+        next_endpoint="study_simplified"
+    )
 
 
 # ==========================================
@@ -167,8 +194,7 @@ def study_quiz1():
 @app.route("/study/simplified", methods=["GET", "POST"])
 def study_simplified():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
+    passage = current_passage()
 
     raw_ai_response = simplify_text(
         passage["control_text"],
@@ -190,26 +216,11 @@ def study_simplified():
 @app.route("/study/quiz2", methods=["GET", "POST"])
 def study_quiz2():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
-    questions = passage.get("quiz2_questions", [])
-
-    if request.method == "POST":
-        score = 0
-        for index, question in enumerate(questions, start=1):
-            answer = request.form.get(f"q{index}")
-            if answer is not None:
-                if int(answer) == question["answer"]:
-                    score += 1
-
-        session["quiz2_score"] = score
-        session["confidence_after"] = int(
-            request.form.get("confidence", 3)
-        )
-
-        return redirect(url_for("study_feedback"))
-
-    return render_template("quiz2.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=2,
+        confidence_key="confidence_after",
+        next_endpoint="study_feedback"
+    )
 
 
 # ==========================================
