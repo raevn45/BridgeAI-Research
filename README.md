@@ -160,22 +160,20 @@ Tests stub out Gemini API calls and use a temporary SQLite database, so no API k
 
 ## Deployment
 
-BridgeAI is deployed for free on [PythonAnywhere](https://www.pythonanywhere.com), which offers:
-- No credit card required
-- Persistent file storage (needed to keep the SQLite research database intact)
-- Outbound access to `googleapis.com`, which covers Gemini API calls
+BridgeAI is deployed on Replit, which offers:
+- Easy cloud hosting and instant setup
+- Webview integration for seamless testing
+- Direct environment secret management for API keys
 
 To deploy:
-1. Clone this repo into a PythonAnywhere Bash console
-2. Create a virtualenv and `pip install -r requirements.txt`
-3. Add your `.env` file with `GEMINI_API_KEY` and `SECRET_KEY`
-4. Set up a new web app under the **Web** tab (Manual configuration → Flask)
-5. Point the WSGI file to your `app` object and reload
+1. Import the repository into your Replit workspace
+2. Configure your `GEMINI_API_KEY` and `SECRET_KEY` in the Replit Secrets / Environment Variables panel
+3. Ensure your `.replit` file uses the Gunicorn production server configuration
+4. Click **Publish** or **Deploy** in your deployment panel
 
-https://raevn00.pythonanywhere.com/app
+[https://bridge-ai-research--raevn.replit.app/app](https://bridge-ai-research--raevn.replit.app/app)
 
 ---
-
 ## Accessing Research Data
 
 Participant responses are stored in `research.db` (SQLite) at the project root. The database
