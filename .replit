@@ -44,6 +44,24 @@ author = 63374757
 task = "shell.exec"
 args = "python test_api.py"
 
+[[workflows.workflow]]
+name = "time"
+mode = "sequential"
+author = 63374757
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind 0.0.0.0:5000 --timeout 120 app:app"
+
+[[workflows.workflow]]
+name = "gunicorn"
+mode = "sequential"
+author = 63374757
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install gunicorn"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
