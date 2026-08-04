@@ -35,6 +35,15 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "test"
+mode = "sequential"
+author = 63374757
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python test_api.py"
+
 [[ports]]
 localPort = 5000
 externalPort = 80

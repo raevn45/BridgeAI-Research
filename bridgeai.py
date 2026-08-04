@@ -9,9 +9,10 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-2.0-flash"
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
 ]
 
 _client = None
@@ -83,10 +84,7 @@ def generate_ai_response(contents):
 
     for model in MODELS:
         try:
-            response = client.models.generate_content(
-                model=model,
-                contents=contents
-            )
+            response = client.models.generate_content(model=model, contents=contents)
         except Exception as exc:
             last_error = exc
             logger.warning("Gemini model %s failed: %s", model, exc)
@@ -95,9 +93,7 @@ def generate_ai_response(contents):
         if response.text:
             return response.text
 
-        last_error = AIServiceError(
-            f"Model {model} returned an empty response."
-        )
+        last_error = AIServiceError(f"Model {model} returned an empty response.")
         logger.warning("Gemini model %s returned an empty response.", model)
 
     raise AIServiceError(
@@ -107,18 +103,11 @@ def generate_ai_response(contents):
 
 def simplify_text(text, audience="General public"):
     """Simplifies passage or text input for a given target audience."""
-    prompt = build_prompt(
-        audience,
-        "Simplify the information below.",
-        information=text
-    )
+    prompt = build_prompt(audience, "Simplify the information below.", information=text)
     return generate_ai_response(prompt)
 
 
 def analyze_image(image, audience="General public"):
     """Analyzes and simplifies document image input."""
-    prompt = build_prompt(
-        audience,
-        "Analyze this document image."
-    )
+    prompt = build_prompt(audience, "Analyze this document image.")
     return generate_ai_response([prompt, image])
