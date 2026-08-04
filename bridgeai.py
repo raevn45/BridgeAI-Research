@@ -11,11 +11,22 @@ client = genai.Client(
 
 def generate_ai_response(contents):
     """Fallback handler through Gemini models."""
-    models = [
-        "gemini-3.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-2.5-flash"
-    ]
+    import os
+    from google import genai
+    
+    # Grab key explicitly from environment
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return "## BridgeAI Error\n\n`GEMINI_API_KEY` is missing in your .env file."
+
+    # Pass api_key directly to Client initialization
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception as e:
+        print("Client init error:", e)
+        return f"## BridgeAI Error\n\nCould not initialize API client: {e}"
+
+    models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
 
     for model in models:
         try:
@@ -23,11 +34,12 @@ def generate_ai_response(contents):
                 model=model,
                 contents=contents
             )
-            return response.text
+            if response.text:
+                return response.text
         except Exception as e:
-            print(f"{model} failed:", e)
+            print(f"[{model}] failed:", e)
 
-    return """
+    return "## BridgeAI Error\n\nAll AI models timed out or failed to respond. Please try again."
 ## BridgeAI is temporarily unavailable
 
 The AI service is currently experiencing high traffic. Please try again in a few moments.
