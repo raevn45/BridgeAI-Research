@@ -1,11 +1,10 @@
 // =========================
 // BridgeAI OS
 // script.js
-// COMPLETE REPLACEMENT
+// COMPLETE REPLACEMENT (FIXED)
 // =========================
 
 document.addEventListener("DOMContentLoaded", () => {
-
     // -------------------------
     // Smooth Cursor
     // -------------------------
@@ -18,21 +17,21 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentX = mouseX;
     let currentY = mouseY;
 
-    document.addEventListener("mousemove", e => {
+    document.addEventListener("mousemove", (e) => {
         mouseX = e.clientX;
         mouseY = e.clientY;
     });
 
-    if(cursor){
+    if (cursor) {
         animateCursor();
     }
 
-    function animateCursor(){
-        currentX += (mouseX-currentX)*0.22;
-        currentY += (mouseY-currentY)*0.22;
+    function animateCursor() {
+        currentX += (mouseX - currentX) * 0.22;
+        currentY += (mouseY - currentY) * 0.22;
 
-        cursor.style.left=currentX+"px";
-        cursor.style.top=currentY+"px";
+        cursor.style.left = currentX + "px";
+        cursor.style.top = currentY + "px";
 
         requestAnimationFrame(animateCursor);
     }
@@ -41,13 +40,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Upload Card
     // -------------------------
 
-    const upload=document.getElementById("upload");
-    const uploadBox=document.querySelector(".upload-box");
+    const upload = document.getElementById("upload");
+    const uploadBox = document.querySelector(".upload-box");
 
-    if(upload){
-        upload.addEventListener("change",()=>{
-            if(upload.files.length>0){
-                uploadBox.innerHTML=`
+    if (upload) {
+        upload.addEventListener("change", () => {
+            if (upload.files.length > 0) {
+                uploadBox.innerHTML = `
                     <div class="upload-icon">
                         ✓
                     </div>
@@ -61,19 +60,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // -------------------------
-    // Analyze Button
+    // Analyze Button & Form Submission Fix
     // -------------------------
 
-    const button=document.getElementById("analyzeButton");
+    const button = document.getElementById("analyzeButton");
+    const form = button ? button.closest("form") : null;
 
-    if(button){
-        button.addEventListener("click",()=>{
-            button.disabled=true;
-            button.innerHTML=`
+    if (button && form) {
+        form.addEventListener("submit", (e) => {
+            // Only change state if it hasn't already been submitted
+            if (button.disabled) {
+                e.preventDefault();
+                return;
+            }
+
+            button.disabled = true;
+            button.innerHTML = `
                 <span>
                 Initializing AI...
                 </span>
             `;
+
+            // Allow the native HTML form submit to continue to Flask
         });
     }
 
@@ -81,16 +89,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Typing Animation
     // -------------------------
 
-    const output=document.getElementById("typing-output");
+    const output = document.getElementById("typing-output");
 
-    if(output){
-        // Fade the rendered HTML in rather than rebuilding innerHTML one
-        // character at a time, which would flash broken/partial tags for
-        // markdown-rendered output.
-        output.style.opacity="0";
-        output.style.transition="opacity 0.6s ease";
-        requestAnimationFrame(()=>{
-            output.style.opacity="1";
+    if (output) {
+        output.style.opacity = "0";
+        output.style.transition = "opacity 0.6s ease";
+        requestAnimationFrame(() => {
+            output.style.opacity = "1";
         });
     }
 
@@ -98,16 +103,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Floating Glass Effect
     // -------------------------
 
-    document.querySelectorAll(".glass").forEach(card=>{
-        card.addEventListener("mousemove",e=>{
-            const rect=card.getBoundingClientRect();
-            const x=e.clientX-rect.left;
-            const y=e.clientY-rect.top;
+    document.querySelectorAll(".glass").forEach((card) => {
+        card.addEventListener("mousemove", (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
-            const rotateY=((x/rect.width)-0.5)*8;
-            const rotateX=((y/rect.height)-0.5)*-8;
+            const rotateY = (x / rect.width - 0.5) * 8;
+            const rotateX = (y / rect.height - 0.5) * -8;
 
-            card.style.transform=`
+            card.style.transform = `
                 perspective(1200px)
                 rotateX(${rotateX}deg)
                 rotateY(${rotateY}deg)
@@ -115,8 +120,8 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         });
 
-        card.addEventListener("mouseleave",()=>{
-            card.style.transform="";
+        card.addEventListener("mouseleave", () => {
+            card.style.transform = "";
         });
     });
 
@@ -124,37 +129,40 @@ document.addEventListener("DOMContentLoaded", () => {
     // Orb Pulse
     // -------------------------
 
-    const orb=document.querySelector(".logo-orb");
+    const orb = document.querySelector(".logo-orb");
 
-    if(orb){
-        setInterval(()=>{
-            orb.animate([
-                {transform:"scale(1)"},
-                {transform:"scale(1.3)"},
-                {transform:"scale(1)"}
-            ],{
-                duration:1800
-            });
-        },2500);
+    if (orb) {
+        setInterval(() => {
+            orb.animate(
+                [
+                    { transform: "scale(1)" },
+                    { transform: "scale(1.3)" },
+                    { transform: "scale(1)" },
+                ],
+                {
+                    duration: 1800,
+                },
+            );
+        }, 2500);
     }
 
     // -------------------------
     // Status Animation
     // -------------------------
 
-    const status=document.querySelector(".status p");
+    const status = document.querySelector(".status p");
 
-    if(status){
-        const messages=[
+    if (status) {
+        const messages = [
             "Ready",
             "Standing By",
             "Listening",
-            "Bridge Connected"
+            "Bridge Connected",
         ];
-        let index=0;
-        setInterval(()=>{
-            index=(index+1)%messages.length;
-            status.textContent=messages[index];
-        },4000);
+        let index = 0;
+        setInterval(() => {
+            index = (index + 1) % messages.length;
+            status.textContent = messages[index];
+        }, 4000);
     }
 });
