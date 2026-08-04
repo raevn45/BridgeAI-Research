@@ -180,6 +180,16 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
 
 
 # ==========================================
+# HEALTHCHECK ROUTE FOR DEPLOYMENT
+# ==========================================
+
+@app.route("/healthz")
+def healthcheck():
+    """Lightweight health check endpoint for Replit deployments."""
+    return "OK", 200
+
+
+# ==========================================
 # BRIDGEAI PUBLIC TOOL
 # ==========================================
 
