@@ -4,16 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
-
 
 def generate_ai_response(contents):
     """Fallback handler through Gemini models."""
-    import os
-    from google import genai
-    
     # Grab key explicitly from environment
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -39,11 +32,11 @@ def generate_ai_response(contents):
         except Exception as e:
             print(f"[{model}] failed:", e)
 
-    return "## BridgeAI Error\n\nAll AI models timed out or failed to respond. Please try again."
-## BridgeAI is temporarily unavailable
-
-The AI service is currently experiencing high traffic. Please try again in a few moments.
-"""
+    return (
+        "## BridgeAI is temporarily unavailable\n\n"
+        "The AI service is currently experiencing high traffic. "
+        "Please try again in a few moments."
+    )
 
 
 def simplify_text(text, audience="General public"):

@@ -23,6 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
         mouseY = e.clientY;
     });
 
+    if(cursor){
+        animateCursor();
+    }
+
     function animateCursor(){
         currentX += (mouseX-currentX)*0.22;
         currentY += (mouseY-currentY)*0.22;
@@ -32,8 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         requestAnimationFrame(animateCursor);
     }
-
-    animateCursor();
 
     // -------------------------
     // Upload Card
@@ -82,19 +84,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const output=document.getElementById("typing-output");
 
     if(output){
-        const finalHTML=output.innerHTML;
-        output.innerHTML="";
-        let i=0;
-
-        function type(){
-            if(i<finalHTML.length){
-                output.innerHTML+=finalHTML.charAt(i);
-                i++;
-                setTimeout(type,7);
-            }
-        }
-
-        type();
+        // Fade the rendered HTML in rather than rebuilding innerHTML one
+        // character at a time, which would flash broken/partial tags for
+        // markdown-rendered output.
+        output.style.opacity="0";
+        output.style.transition="opacity 0.6s ease";
+        requestAnimationFrame(()=>{
+            output.style.opacity="1";
+        });
     }
 
     // -------------------------
