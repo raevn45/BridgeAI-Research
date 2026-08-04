@@ -5,10 +5,7 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "research.db"
-)
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research.db")
 
 
 @contextmanager
@@ -55,11 +52,12 @@ def save_participant_data(
     quiz2_score,
     confidence_after,
     feedback,
-    group_assignment=None
+    group_assignment=None,
 ):
     """Save a participant's research data to the database."""
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO participants (
                 first_name,
                 age,
@@ -71,14 +69,24 @@ def save_participant_data(
                 confidence_after,
                 feedback
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            first_name,
-            age,
-            passage_id,
-            group_assignment,
-            quiz1_score,
-            confidence_before,
-            quiz2_score,
-            confidence_after,
-            feedback
-        ))
+        """,
+            (
+                first_name,
+                age,
+                passage_id,
+                group_assignment,
+                quiz1_score,
+                confidence_before,
+                quiz2_score,
+                confidence_after,
+                feedback,
+            ),
+        )
+
+
+def get_all_participant_data():
+    """Return all rows from the participants table as a list of dictionaries."""
+    with get_cursor() as cursor:
+        cursor.execute("SELECT * FROM participants")
+        columns = [column[0] for column in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]

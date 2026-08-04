@@ -9,27 +9,13 @@ import markdown
 from PIL import Image
 from pypdf import PdfReader
 
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session
-)
+from flask import Flask, render_template, request, redirect, url_for, session
 
 from dotenv import load_dotenv
 
-from bridgeai import (
-    AIServiceError,
-    simplify_text,
-    analyze_image
-)
+from bridgeai import AIServiceError, simplify_text, analyze_image
 
-from passages import (
-    PASSAGES,
-    get_passage
-)
+from passages import PASSAGES, get_passage
 
 import database
 
@@ -86,6 +72,7 @@ AI_UNAVAILABLE_MESSAGE = (
 # ==========================================
 # SHARED HELPERS
 # ==========================================
+
 
 def current_passage():
     """Return the passage assigned to the current session."""
@@ -162,10 +149,7 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
     questions = passage.get(f"quiz{quiz_number}_questions", [])
 
     if request.method == "POST":
-        session[f"quiz{quiz_number}_score"] = score_quiz(
-            questions,
-            request.form
-        )
+        session[f"quiz{quiz_number}_score"] = score_quiz(questions, request.form)
         session[confidence_key] = parse_int(
             request.form.get("confidence"), 3, minimum=1, maximum=5
         )
@@ -173,15 +157,14 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
         return redirect(url_for(next_endpoint))
 
     return render_template(
-        f"quiz{quiz_number}.html",
-        passage=passage,
-        questions=questions
+        f"quiz{quiz_number}.html", passage=passage, questions=questions
     )
 
 
 # ==========================================
 # HEALTHCHECK ROUTE FOR DEPLOYMENT
 # ==========================================
+
 
 @app.route("/healthz")
 def healthcheck():
@@ -193,6 +176,7 @@ def healthcheck():
 # BRIDGEAI PUBLIC TOOL
 # ==========================================
 
+
 @app.route("/")
 def landing():
     return render_template("landing.html")
@@ -200,15 +184,11 @@ def landing():
 
 @app.route("/app", methods=["GET", "POST"])
 def bridge_app():
-
     result = ""
 
     if request.method == "POST":
-
         text = request.form.get("text", "")[:MAX_TEXT_LENGTH]
-        audience = clean_audience(
-            request.form.get("audience", DEFAULT_AUDIENCE)
-        )
+        audience = clean_audience(request.form.get("audience", DEFAULT_AUDIENCE))
         uploaded_file = request.files.get("file")
 
         content = ""
@@ -219,7 +199,6 @@ def bridge_app():
 
         # FILE INPUT
         if uploaded_file and uploaded_file.filename:
-
             filename = uploaded_file.filename.lower()
 
             # PDF PROCESSING
@@ -229,9 +208,8 @@ def bridge_app():
                     return render_template(
                         "index.html",
                         result=render_markdown(
-                            "That PDF could not be read. "
-                            "Please try a different file."
-                        )
+                            "That PDF could not be read. Please try a different file."
+                        ),
                     )
                 content += "\n\n" + pdf_text
 
@@ -242,31 +220,24 @@ def bridge_app():
                     return render_template(
                         "index.html",
                         result=render_markdown(
-                            "That image could not be read. "
-                            "Please try a different file."
-                        )
+                            "That image could not be read. Please try a different file."
+                        ),
                     )
 
                 try:
                     ai_text = analyze_image(image, audience)
                 except AIServiceError:
                     logger.exception("Image analysis failed")
-                    return render_template(
-                        "index.html",
-                        result=AI_UNAVAILABLE_MESSAGE
-                    )
+                    return render_template("index.html", result=AI_UNAVAILABLE_MESSAGE)
 
-                return render_template(
-                    "index.html",
-                    result=render_markdown(ai_text)
-                )
+                return render_template("index.html", result=render_markdown(ai_text))
 
             # UNSUPPORTED FILE TYPE
             else:
                 return render_template(
                     "index.html",
                     result="<p>Unsupported file type. "
-                           "Please upload a PDF, PNG, or JPG file.</p>"
+                    "Please upload a PDF, PNG, or JPG file.</p>",
                 )
 
         if not content.strip():
@@ -276,42 +247,54 @@ def bridge_app():
                 ai_text = simplify_text(content[:MAX_TEXT_LENGTH], audience)
             except AIServiceError:
                 logger.exception("Text simplification failed")
-                return render_template(
-                    "index.html",
-                    result=AI_UNAVAILABLE_MESSAGE
-                )
+                return render_template("index.html", result=AI_UNAVAILABLE_MESSAGE)
             result = render_markdown(ai_text)
 
     return render_template("index.html", result=result)
 
 
 # ==========================================
+# DATA EXPORT ROUTE
+# ==========================================
+
+
+@app.route("/export-data")
+def export_data():
+    token = request.args.get("token")
+    if token != "apples":
+        return "Unauthorized", 403
+
+    try:
+        data = database.get_all_participant_data()
+        return {"data": data}
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+
+# ==========================================
 # RESEARCH STUDY FLOW
 # ==========================================
+
 
 @app.route("/research", methods=["GET", "POST"])
 @app.route("/study/consent", methods=["GET", "POST"])
 def study_consent():
-
     if request.method == "POST":
-
         first_name = request.form.get("first_name", "").strip()
         session["first_name"] = first_name[:MAX_NAME_LENGTH] or "Anonymous"
         session["age"] = parse_int(
             request.form.get("age"), 0, minimum=0, maximum=MAX_AGE
         )
 
-        # Select random passage
         passage_keys = list(PASSAGES.keys())
         selected_passage = random.choice(passage_keys)
         session["passage_id"] = selected_passage
 
-        # A/B testing group
         session["group"] = random.choice(["control", "treatment"])
 
-        # Drop any cached simplification from a previous run.
-        for key in [k for k in list(session.keys())
-                    if k.startswith("simplified_html:")]:
+        for key in [
+            k for k in list(session.keys()) if k.startswith("simplified_html:")
+        ]:
             session.pop(key, None)
 
         return redirect(url_for("study_passage"))
@@ -321,7 +304,6 @@ def study_consent():
 
 @app.route("/study/passage", methods=["GET", "POST"])
 def study_passage():
-
     if "passage_id" not in session:
         return redirect(url_for("study_consent"))
 
@@ -336,11 +318,10 @@ def study_passage():
 
 @app.route("/study/quiz1", methods=["GET", "POST"])
 def study_quiz1():
-
     return run_quiz_step(
         quiz_number=1,
         confidence_key="confidence_before",
-        next_endpoint="study_simplified"
+        next_endpoint="study_simplified",
     )
 
 
@@ -348,36 +329,28 @@ def study_quiz1():
 # SIMPLIFIED VERSION
 # ==========================================
 
+
 @app.route("/study/simplified", methods=["GET", "POST"])
 def study_simplified():
-
     if "passage_id" not in session:
         return redirect(url_for("study_consent"))
 
     if request.method == "POST":
         return redirect(url_for("study_quiz2"))
 
-    # Generate the simplified passage once per participant/passage and cache it
-    # in the session so page reloads don't trigger repeated (and differing)
-    # Gemini calls during the study.
     cache_key = f"simplified_html:{session['passage_id']}"
     simplified_html = session.get(cache_key)
 
     if not simplified_html:
         passage = current_passage()
         try:
-            raw_ai_response = simplify_text(
-                passage["control_text"],
-                "General public"
-            )
+            raw_ai_response = simplify_text(passage["control_text"], "General public")
         except AIServiceError:
             logger.exception(
-                "Study simplification failed for passage %s",
-                session["passage_id"]
+                "Study simplification failed for passage %s", session["passage_id"]
             )
             return render_template(
-                "simplified.html",
-                simplified_text=AI_UNAVAILABLE_MESSAGE
+                "simplified.html", simplified_text=AI_UNAVAILABLE_MESSAGE
             )
 
         simplified_html = render_markdown(raw_ai_response)
@@ -390,13 +363,11 @@ def study_simplified():
 # SECOND QUIZ
 # ==========================================
 
+
 @app.route("/study/quiz2", methods=["GET", "POST"])
 def study_quiz2():
-
     return run_quiz_step(
-        quiz_number=2,
-        confidence_key="confidence_after",
-        next_endpoint="study_feedback"
+        quiz_number=2, confidence_key="confidence_after", next_endpoint="study_feedback"
     )
 
 
@@ -404,20 +375,13 @@ def study_quiz2():
 # FEEDBACK PAGE
 # ==========================================
 
+
 @app.route("/study/feedback", methods=["GET", "POST"])
 def study_feedback():
-
     if request.method == "POST":
-
-        helpful_rating = request.form.get(
-            "helpful_rating", "Neutral"
-        )[:MAX_NAME_LENGTH]
-        impression = request.form.get(
-            "overall_impression", ""
-        )[:MAX_FEEDBACK_LENGTH]
-        improvements = request.form.get(
-            "improvements", ""
-        )[:MAX_FEEDBACK_LENGTH]
+        helpful_rating = request.form.get("helpful_rating", "Neutral")[:MAX_NAME_LENGTH]
+        impression = request.form.get("overall_impression", "")[:MAX_FEEDBACK_LENGTH]
+        improvements = request.form.get("improvements", "")[:MAX_FEEDBACK_LENGTH]
 
         feedback = (
             f"Rating: {helpful_rating} | "
@@ -435,14 +399,13 @@ def study_feedback():
                 quiz2_score=session.get("quiz2_score", 0),
                 confidence_after=session.get("confidence_after", 3),
                 feedback=feedback,
-                group_assignment=session.get("group")
+                group_assignment=session.get("group"),
             )
         except Exception:
             logger.exception("Could not save participant feedback")
             return render_template(
                 "feedback.html",
-                error="We could not save your responses. "
-                      "Please try submitting again."
+                error="We could not save your responses. Please try submitting again.",
             ), 500
 
         return redirect(url_for("study_thankyou"))
@@ -453,6 +416,7 @@ def study_feedback():
 # ==========================================
 # THANK YOU PAGE
 # ==========================================
+
 
 @app.route("/study/thankyou")
 def study_thankyou():
@@ -467,5 +431,5 @@ if __name__ == "__main__":
     app.run(
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", 5000)),
-        debug=os.getenv("FLASK_DEBUG") == "1"
+        debug=os.getenv("FLASK_DEBUG") == "1",
     )
