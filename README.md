@@ -171,7 +171,7 @@ To deploy:
 3. Ensure your `.replit` file uses the Gunicorn production server configuration
 4. Click **Publish** or **Deploy** in your deployment panel
 
-[https://bridge-ai-research--raevn.replit.app/app](https://bridge-ai-research--raevn.replit.app/app)
+[https://bridge-ai-research--raevn.replit.app](https://bridge-ai-research--raevn.replit.app)
 
 ---
 ## Accessing Research Data
