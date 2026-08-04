@@ -1,34 +1,43 @@
+import logging
 import os
-from google import genai
+
 from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+logger = logging.getLogger(__name__)
+
+UNAVAILABLE_MESSAGE = (
+    "## BridgeAI is temporarily unavailable\n\n"
+    "The AI service could not be reached right now. "
+    "Please try again in a few moments."
 )
+
+MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
+
+
+def get_client():
+    """Create a Gemini client, or None when no API key is configured."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        logger.error("GEMINI_API_KEY is not configured")
+        return None
+
+    try:
+        return genai.Client(api_key=api_key)
+    except Exception:
+        logger.exception("Failed to initialize the Gemini client")
+        return None
 
 
 def generate_ai_response(contents):
     """Fallback handler through Gemini models."""
-    import os
-    from google import genai
-    
-    # Grab key explicitly from environment
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return "## BridgeAI Error\n\n`GEMINI_API_KEY` is missing in your .env file."
+    client = get_client()
+    if client is None:
+        return UNAVAILABLE_MESSAGE
 
-    # Pass api_key directly to Client initialization
-    try:
-        client = genai.Client(api_key=api_key)
-    except Exception as e:
-        print("Client init error:", e)
-        return f"## BridgeAI Error\n\nCould not initialize API client: {e}"
-
-    models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
-
-    for model in models:
+    for model in MODELS:
         try:
             response = client.models.generate_content(
                 model=model,
@@ -36,14 +45,10 @@ def generate_ai_response(contents):
             )
             if response.text:
                 return response.text
-        except Exception as e:
-            print(f"[{model}] failed:", e)
+        except Exception:
+            logger.exception("Model %s failed", model)
 
-    return "## BridgeAI Error\n\nAll AI models timed out or failed to respond. Please try again."
-## BridgeAI is temporarily unavailable
-
-The AI service is currently experiencing high traffic. Please try again in a few moments.
-"""
+    return UNAVAILABLE_MESSAGE
 
 
 def simplify_text(text, audience="General public"):
