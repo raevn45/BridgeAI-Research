@@ -8,7 +8,13 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
+MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash"
+]
+
+_client = None
 
 
 class AIServiceError(Exception):
@@ -20,7 +26,12 @@ class AIConfigurationError(AIServiceError):
 
 
 def get_client():
-    """Build a Gemini client, raising AIConfigurationError if unusable."""
+    """Return a cached Gemini client, raising if it cannot be built."""
+    global _client
+
+    if _client is not None:
+        return _client
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise AIConfigurationError(
@@ -28,15 +39,44 @@ def get_client():
         )
 
     try:
-        return genai.Client(api_key=api_key)
+        _client = genai.Client(api_key=api_key)
     except Exception as exc:
         raise AIConfigurationError(
             f"Could not initialize the Gemini client: {exc}"
         ) from exc
 
+    return _client
+
+
+def build_prompt(audience, task, information=None):
+    """Build the shared BridgeAI prompt for a task and target audience."""
+    prompt = f"""
+You are BridgeAI, an accessibility assistant.
+{task}
+
+Audience:
+{audience}
+
+Provide:
+
+## Simple Explanation
+Explain it clearly.
+
+## Key Points
+Important information in bullet points.
+
+## Important Actions
+What the user should do or remember.
+"""
+
+    if information is not None:
+        prompt += f"\nInformation:\n{information}\n"
+
+    return prompt
+
 
 def generate_ai_response(contents):
-    """Call Gemini, falling back through models, raising on total failure."""
+    """Generate a response, falling back through the Gemini models."""
     client = get_client()
 
     last_error = None
@@ -55,7 +95,9 @@ def generate_ai_response(contents):
         if response.text:
             return response.text
 
-        last_error = AIServiceError(f"Model {model} returned an empty response.")
+        last_error = AIServiceError(
+            f"Model {model} returned an empty response."
+        )
         logger.warning("Gemini model %s returned an empty response.", model)
 
     raise AIServiceError(
@@ -65,43 +107,18 @@ def generate_ai_response(contents):
 
 def simplify_text(text, audience="General public"):
     """Simplifies passage or text input for a given target audience."""
-    prompt = f"""
-You are BridgeAI, an accessibility assistant.
-Simplify the information below.
-
-Audience:
-{audience}
-
-Provide:
-
-## Simple Explanation
-Explain it clearly.
-
-## Key Points
-Important information in bullet points.
-
-## Important Actions
-What the user should do or remember.
-
-Information:
-{text}
-"""
+    prompt = build_prompt(
+        audience,
+        "Simplify the information below.",
+        information=text
+    )
     return generate_ai_response(prompt)
 
 
 def analyze_image(image, audience="General public"):
     """Analyzes and simplifies document image input."""
-    prompt = f"""
-You are BridgeAI, an accessibility assistant.
-Analyze this document image.
-
-Audience:
-{audience}
-
-Provide:
-
-## Simple Explanation
-## Key Points
-## Important Actions
-"""
+    prompt = build_prompt(
+        audience,
+        "Analyze this document image."
+    )
     return generate_ai_response([prompt, image])

@@ -4,6 +4,9 @@ import random
 
 import markdown
 
+from PIL import Image
+from pypdf import PdfReader
+
 from flask import (
     Flask,
     render_template,
@@ -47,6 +50,15 @@ AI_UNAVAILABLE_MESSAGE = (
 )
 
 
+# ==========================================
+# SHARED HELPERS
+# ==========================================
+
+def current_passage():
+    """Return the passage assigned to the current session."""
+    return get_passage(session["passage_id"])
+
+
 def parse_int(value, default):
     """Parse a form value as an int, falling back to a default."""
     try:
@@ -57,13 +69,41 @@ def parse_int(value, default):
 
 
 def score_quiz(questions, form):
-    """Count correct answers, ignoring missing or malformed submissions."""
+    """Count how many submitted answers match the correct option index."""
     score = 0
+
     for index, question in enumerate(questions, start=1):
         answer = parse_int(form.get(f"q{index}"), None)
         if answer is not None and answer == question["answer"]:
             score += 1
+
     return score
+
+
+def run_quiz_step(quiz_number, confidence_key, next_endpoint):
+    """Handle one comprehension quiz: score it, store it, move on."""
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
+
+    passage = current_passage()
+    questions = passage.get(f"quiz{quiz_number}_questions", [])
+
+    if request.method == "POST":
+        session[f"quiz{quiz_number}_score"] = score_quiz(
+            questions,
+            request.form
+        )
+        session[confidence_key] = parse_int(
+            request.form.get("confidence"), 3
+        )
+
+        return redirect(url_for(next_endpoint))
+
+    return render_template(
+        f"quiz{quiz_number}.html",
+        passage=passage,
+        questions=questions
+    )
 
 
 # ==========================================
@@ -99,7 +139,6 @@ def bridge_app():
 
             # PDF PROCESSING
             if filename.endswith(".pdf"):
-                from pypdf import PdfReader
                 try:
                     reader = PdfReader(uploaded_file)
                     pdf_text = ""
@@ -116,7 +155,6 @@ def bridge_app():
 
             # IMAGE PROCESSING
             elif filename.endswith((".png", ".jpg", ".jpeg")):
-                from PIL import Image
                 try:
                     image = Image.open(uploaded_file)
                 except Exception:
@@ -187,9 +225,8 @@ def study_passage():
     if "passage_id" not in session:
         return redirect(url_for("study_consent"))
 
-    passage_id = session["passage_id"]
     group = session.get("group", "control")
-    passage = get_passage(passage_id)
+    passage = current_passage()
 
     if request.method == "POST":
         return redirect(url_for("study_quiz1"))
@@ -200,21 +237,11 @@ def study_passage():
 @app.route("/study/quiz1", methods=["GET", "POST"])
 def study_quiz1():
 
-    if "passage_id" not in session:
-        return redirect(url_for("study_consent"))
-
-    passage = get_passage(session["passage_id"])
-    questions = passage.get("quiz1_questions", [])
-
-    if request.method == "POST":
-        session["quiz1_score"] = score_quiz(questions, request.form)
-        session["confidence_before"] = parse_int(
-            request.form.get("confidence"), 3
-        )
-
-        return redirect(url_for("study_simplified"))
-
-    return render_template("quiz1.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=1,
+        confidence_key="confidence_before",
+        next_endpoint="study_simplified"
+    )
 
 
 # ==========================================
@@ -230,7 +257,7 @@ def study_simplified():
     if request.method == "POST":
         return redirect(url_for("study_quiz2"))
 
-    passage = get_passage(session["passage_id"])
+    passage = current_passage()
 
     try:
         raw_ai_response = simplify_text(
@@ -238,7 +265,10 @@ def study_simplified():
             "General public"
         )
     except AIServiceError:
-        logger.exception("Study simplification failed for passage %s", session["passage_id"])
+        logger.exception(
+            "Study simplification failed for passage %s",
+            session["passage_id"]
+        )
         return render_template(
             "simplified.html",
             simplified_text=AI_UNAVAILABLE_MESSAGE
@@ -256,21 +286,11 @@ def study_simplified():
 @app.route("/study/quiz2", methods=["GET", "POST"])
 def study_quiz2():
 
-    if "passage_id" not in session:
-        return redirect(url_for("study_consent"))
-
-    passage = get_passage(session["passage_id"])
-    questions = passage.get("quiz2_questions", [])
-
-    if request.method == "POST":
-        session["quiz2_score"] = score_quiz(questions, request.form)
-        session["confidence_after"] = parse_int(
-            request.form.get("confidence"), 3
-        )
-
-        return redirect(url_for("study_feedback"))
-
-    return render_template("quiz2.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=2,
+        confidence_key="confidence_after",
+        next_endpoint="study_feedback"
+    )
 
 
 # ==========================================
@@ -307,7 +327,8 @@ def study_feedback():
             logger.exception("Could not save participant feedback")
             return render_template(
                 "feedback.html",
-                error="We could not save your responses. Please try submitting again."
+                error="We could not save your responses. "
+                      "Please try submitting again."
             ), 500
 
         return redirect(url_for("study_thankyou"))
