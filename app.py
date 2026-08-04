@@ -4,8 +4,7 @@ import random
 
 import markdown
 
-from PIL import Image
-from pypdf import PdfReader
+import markdown
 
 from flask import (
     Flask,
@@ -17,6 +16,10 @@ from flask import (
 )
 
 from dotenv import load_dotenv
+
+from PIL import Image, UnidentifiedImageError
+
+from pypdf import PdfReader
 
 from bridgeai import (
     AIServiceError,
@@ -33,10 +36,39 @@ import database
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_TEXT_LENGTH = 20000
+MAX_NAME_LENGTH = 100
+MAX_FEEDBACK_LENGTH = 2000
+MAX_PDF_PAGES = 50
+ALLOWED_AUDIENCES = {
+    "General public",
+    "Student",
+    "Patient",
+    "Elderly person",
+}
+DEFAULT_AUDIENCE = "General public"
+PDF_EXTENSIONS = (".pdf",)
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg")
+
 app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SECRET_KEY",
-    "bridgeai-research-secret-key-2026"
+
+secret_key = os.getenv("SECRET_KEY")
+if not secret_key:
+    logger.warning(
+        "SECRET_KEY is not set; generating an ephemeral key. "
+        "Sessions will be invalidated on restart."
+    )
+    secret_key = secrets.token_hex(32)
+app.secret_key = secret_key
+
+app.config.update(
+    MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
 )
 
 # Cap upload size (default 10 MB) to avoid unbounded request bodies.
@@ -53,6 +85,48 @@ AI_UNAVAILABLE_MESSAGE = (
     "<p>BridgeAI could not generate a simplification right now. "
     "Please try again in a few moments.</p>"
 )
+
+
+def render_markdown(text):
+    """Render untrusted markdown without letting raw HTML through."""
+    return markdown.markdown(html.escape(text))
+
+
+def extract_pdf_text(uploaded_file):
+    """Extract text from an uploaded PDF, or None when it cannot be read."""
+    try:
+        reader = PdfReader(uploaded_file)
+        pages = reader.pages[:MAX_PDF_PAGES]
+        return "".join(page.extract_text() or "" for page in pages)
+    except Exception:
+        logger.exception("Failed to read uploaded PDF")
+        return None
+
+
+def load_image(uploaded_file):
+    """Open an uploaded image, or None when it is not a valid image."""
+    try:
+        image = Image.open(uploaded_file)
+        image.verify()
+        uploaded_file.seek(0)
+        return Image.open(uploaded_file)
+    except (UnidentifiedImageError, OSError, ValueError):
+        logger.exception("Failed to read uploaded image")
+        return None
+
+
+def clean_audience(value):
+    """Restrict the audience to the values offered by the form."""
+    return value if value in ALLOWED_AUDIENCES else DEFAULT_AUDIENCE
+
+
+def parse_int(value, default, minimum, maximum):
+    """Parse an integer form field, falling back to a clamped default."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, parsed))
 
 
 # ==========================================
@@ -127,8 +201,8 @@ def bridge_app():
 
     if request.method == "POST":
 
-        text = request.form.get("text", "")
-        audience = request.form.get("audience", "General public")
+        text = request.form.get("text", "")[:MAX_TEXT_LENGTH]
+        audience = clean_audience(request.form.get("audience", DEFAULT_AUDIENCE))
         uploaded_file = request.files.get("file")
 
         content = ""
@@ -183,7 +257,9 @@ def bridge_app():
                 return render_template("index.html", result=result)
 
         if not content.strip():
-            result = "<p>Please upload a PDF, image, or paste text first.</p>"
+            result = render_markdown(
+                "Please upload a PDF, image, or paste text first."
+            )
         else:
             try:
                 ai_text = simplify_text(content, audience)
@@ -290,8 +366,7 @@ def study_simplified():
                 simplified_text=AI_UNAVAILABLE_MESSAGE
             )
 
-        simplified_html = markdown.markdown(raw_ai_response)
-        session[cache_key] = simplified_html
+    simplified_html = render_markdown(raw_ai_response)
 
     return render_template("simplified.html", simplified_text=simplified_html)
 
@@ -319,9 +394,15 @@ def study_feedback():
 
     if request.method == "POST":
 
-        helpful_rating = request.form.get("helpful_rating", "Neutral")
-        impression = request.form.get("overall_impression", "")
-        improvements = request.form.get("improvements", "")
+        helpful_rating = request.form.get(
+            "helpful_rating", "Neutral"
+        )[:MAX_NAME_LENGTH]
+        impression = request.form.get(
+            "overall_impression", ""
+        )[:MAX_FEEDBACK_LENGTH]
+        improvements = request.form.get(
+            "improvements", ""
+        )[:MAX_FEEDBACK_LENGTH]
 
         feedback = (
             f"Rating: {helpful_rating} | "
@@ -369,7 +450,7 @@ def study_thankyou():
 
 if __name__ == "__main__":
     app.run(
-        host="0.0.0.0",
+        host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", 5000)),
         debug=os.getenv("FLASK_DEBUG") == "1"
     )

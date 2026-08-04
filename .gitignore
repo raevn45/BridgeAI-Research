@@ -217,8 +217,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# SQLite research/database files (may contain participant data)
-database.db
-research.db
-*.sqlite
+# Local research databases (contain participant data)
+*.db
 *.sqlite3

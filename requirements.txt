@@ -1,7 +1,0 @@
-Flask
-google-genai
-python-dotenv
-Pillow
-pypdf
-Markdown
-gunicorn
