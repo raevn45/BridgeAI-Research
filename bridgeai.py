@@ -14,17 +14,19 @@ MODELS = [
     "gemini-2.0-flash"
 ]
 
-UNAVAILABLE_MESSAGE = (
-    "## BridgeAI is temporarily unavailable\n\n"
-    "The AI service could not be reached right now. "
-    "Please try again in a few moments."
-)
-
 _client = None
 
 
+class AIServiceError(Exception):
+    """Raised when the Gemini API cannot produce a usable response."""
+
+
+class AIConfigurationError(AIServiceError):
+    """Raised when the Gemini API is not configured correctly."""
+
+
 def get_client():
-    """Return a cached Gemini client, or None if the API key is missing."""
+    """Return a cached Gemini client, raising if it cannot be built."""
     global _client
 
     if _client is not None:
@@ -32,14 +34,16 @@ def get_client():
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        logger.error("GEMINI_API_KEY is not configured")
-        return None
+        raise AIConfigurationError(
+            "GEMINI_API_KEY is not set; add it to your .env file."
+        )
 
     try:
         _client = genai.Client(api_key=api_key)
-    except Exception:
-        logger.exception("Failed to initialize the Gemini client")
-        return None
+    except Exception as exc:
+        raise AIConfigurationError(
+            f"Could not initialize the Gemini client: {exc}"
+        ) from exc
 
     return _client
 
@@ -74,8 +78,8 @@ What the user should do or remember.
 def generate_ai_response(contents):
     """Generate a response, falling back through the Gemini models."""
     client = get_client()
-    if client is None:
-        return UNAVAILABLE_MESSAGE
+
+    last_error = None
 
     for model in MODELS:
         try:
@@ -83,12 +87,22 @@ def generate_ai_response(contents):
                 model=model,
                 contents=contents
             )
-            if response.text:
-                return response.text
-        except Exception:
-            logger.exception("Model %s failed", model)
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Gemini model %s failed: %s", model, exc)
+            continue
 
-    return UNAVAILABLE_MESSAGE
+        if response.text:
+            return response.text
+
+        last_error = AIServiceError(
+            f"Model {model} returned an empty response."
+        )
+        logger.warning("Gemini model %s returned an empty response.", model)
+
+    raise AIServiceError(
+        "All Gemini models failed to return a response."
+    ) from last_error
 
 
 def simplify_text(text, audience="General public"):

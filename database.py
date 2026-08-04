@@ -1,6 +1,9 @@
+import logging
 import os
 import sqlite3
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -10,11 +13,15 @@ DB_PATH = os.path.join(
 
 @contextmanager
 def get_cursor():
-    """Yield a cursor, committing and closing the connection afterwards."""
+    """Yield a cursor, committing on success and rolling back on failure."""
     conn = sqlite3.connect(DB_PATH)
     try:
         yield conn.cursor()
         conn.commit()
+    except Exception:
+        conn.rollback()
+        logger.exception("Database operation on %s failed", DB_PATH)
+        raise
     finally:
         conn.close()
 

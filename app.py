@@ -1,8 +1,8 @@
-import html
 import logging
 import os
 import random
-import secrets
+
+import markdown
 
 import markdown
 
@@ -22,6 +22,7 @@ from PIL import Image, UnidentifiedImageError
 from pypdf import PdfReader
 
 from bridgeai import (
+    AIServiceError,
     simplify_text,
     analyze_image
 )
@@ -70,7 +71,15 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
 )
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 database.init_db()
+
+AI_UNAVAILABLE_MESSAGE = (
+    "<p>BridgeAI could not generate a simplification right now. "
+    "Please try again in a few moments.</p>"
+)
 
 
 def render_markdown(text):
@@ -121,7 +130,16 @@ def parse_int(value, default, minimum, maximum):
 
 def current_passage():
     """Return the passage assigned to the current session."""
-    return get_passage(session.get("passage_id", "medical"))
+    return get_passage(session["passage_id"])
+
+
+def parse_int(value, default):
+    """Parse a form value as an int, falling back to a default."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logger.info("Ignoring non-numeric form value %r", value)
+        return default
 
 
 def score_quiz(questions, form):
@@ -129,7 +147,7 @@ def score_quiz(questions, form):
     score = 0
 
     for index, question in enumerate(questions, start=1):
-        answer = parse_int(form.get(f"q{index}"), None, 0, 10)
+        answer = parse_int(form.get(f"q{index}"), None)
         if answer is not None and answer == question["answer"]:
             score += 1
 
@@ -138,6 +156,9 @@ def score_quiz(questions, form):
 
 def run_quiz_step(quiz_number, confidence_key, next_endpoint):
     """Handle one comprehension quiz: score it, store it, move on."""
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
+
     passage = current_passage()
     questions = passage.get(f"quiz{quiz_number}_questions", [])
 
@@ -147,7 +168,7 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
             request.form
         )
         session[confidence_key] = parse_int(
-            request.form.get("confidence"), 3, 1, 5
+            request.form.get("confidence"), 3
         )
 
         return redirect(url_for(next_endpoint))
@@ -191,51 +212,59 @@ def bridge_app():
             filename = uploaded_file.filename.lower()
 
             # PDF PROCESSING
-            if filename.endswith(PDF_EXTENSIONS):
-                pdf_text = extract_pdf_text(uploaded_file)
-                if pdf_text is None:
+            if filename.endswith(".pdf"):
+                try:
+                    reader = PdfReader(uploaded_file)
+                    pdf_text = ""
+                    for page in reader.pages:
+                        pdf_text += page.extract_text() or ""
+                except Exception:
+                    logger.exception("Failed to extract text from uploaded PDF")
                     return render_template(
                         "index.html",
-                        result=render_markdown(
-                            "That PDF could not be read. "
-                            "Please try a different file."
-                        )
+                        result="<p>That PDF could not be read. "
+                               "Please try a different file.</p>"
                     )
                 content += "\n\n" + pdf_text
 
             # IMAGE PROCESSING
-            elif filename.endswith(IMAGE_EXTENSIONS):
-                image = load_image(uploaded_file)
-                if image is None:
+            elif filename.endswith((".png", ".jpg", ".jpeg")):
+                try:
+                    image = Image.open(uploaded_file)
+                except Exception:
+                    logger.exception("Failed to open uploaded image")
                     return render_template(
                         "index.html",
-                        result=render_markdown(
-                            "That image could not be read. "
-                            "Please upload a PNG or JPG file."
-                        )
+                        result="<p>That image could not be read. "
+                               "Please try a different file.</p>"
                     )
-                ai_text = analyze_image(image, audience)
-                return render_template(
-                    "index.html",
-                    result=render_markdown(ai_text)
-                )
 
-            else:
-                return render_template(
-                    "index.html",
-                    result=render_markdown(
-                        "Unsupported file type. "
-                        "Please upload a PDF, PNG, or JPG file."
+                try:
+                    ai_text = analyze_image(image, audience)
+                except AIServiceError:
+                    logger.exception("Image analysis failed")
+                    return render_template(
+                        "index.html",
+                        result=AI_UNAVAILABLE_MESSAGE
                     )
-                )
+
+                result = markdown.markdown(ai_text)
+                return render_template("index.html", result=result)
 
         if not content.strip():
             result = render_markdown(
                 "Please upload a PDF, image, or paste text first."
             )
         else:
-            ai_text = simplify_text(content[:MAX_TEXT_LENGTH], audience)
-            result = render_markdown(ai_text)
+            try:
+                ai_text = simplify_text(content, audience)
+            except AIServiceError:
+                logger.exception("Text simplification failed")
+                return render_template(
+                    "index.html",
+                    result=AI_UNAVAILABLE_MESSAGE
+                )
+            result = markdown.markdown(ai_text)
 
     return render_template("index.html", result=result)
 
@@ -250,9 +279,8 @@ def study_consent():
 
     if request.method == "POST":
 
-        first_name = request.form.get("first_name", "").strip()
-        session["first_name"] = first_name[:MAX_NAME_LENGTH] or "Anonymous"
-        session["age"] = parse_int(request.form.get("age"), 0, 0, 120)
+        session["first_name"] = request.form.get("first_name", "Anonymous")
+        session["age"] = parse_int(request.form.get("age"), 0)
 
         # Select random passage
         passage_keys = list(PASSAGES.keys())
@@ -269,6 +297,9 @@ def study_consent():
 
 @app.route("/study/passage", methods=["GET", "POST"])
 def study_passage():
+
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
 
     group = session.get("group", "control")
     passage = current_passage()
@@ -296,17 +327,30 @@ def study_quiz1():
 @app.route("/study/simplified", methods=["GET", "POST"])
 def study_simplified():
 
-    passage = current_passage()
-
-    raw_ai_response = simplify_text(
-        passage["control_text"],
-        "General public"
-    )
-
-    simplified_html = render_markdown(raw_ai_response)
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
 
     if request.method == "POST":
         return redirect(url_for("study_quiz2"))
+
+    passage = current_passage()
+
+    try:
+        raw_ai_response = simplify_text(
+            passage["control_text"],
+            "General public"
+        )
+    except AIServiceError:
+        logger.exception(
+            "Study simplification failed for passage %s",
+            session["passage_id"]
+        )
+        return render_template(
+            "simplified.html",
+            simplified_text=AI_UNAVAILABLE_MESSAGE
+        )
+
+    simplified_html = render_markdown(raw_ai_response)
 
     return render_template("simplified.html", simplified_text=simplified_html)
 
@@ -350,16 +394,24 @@ def study_feedback():
             f"Improvements: {improvements}"
         )
 
-        database.save_participant_data(
-            first_name=session.get("first_name", "Anonymous"),
-            age=session.get("age", 0),
-            passage_id=session.get("passage_id", "unknown"),
-            quiz1_score=session.get("quiz1_score", 0),
-            confidence_before=session.get("confidence_before", 3),
-            quiz2_score=session.get("quiz2_score", 0),
-            confidence_after=session.get("confidence_after", 3),
-            feedback=feedback
-        )
+        try:
+            database.save_participant_data(
+                first_name=session.get("first_name", "Anonymous"),
+                age=session.get("age", 0),
+                passage_id=session.get("passage_id", "unknown"),
+                quiz1_score=session.get("quiz1_score", 0),
+                confidence_before=session.get("confidence_before", 3),
+                quiz2_score=session.get("quiz2_score", 0),
+                confidence_after=session.get("confidence_after", 3),
+                feedback=feedback
+            )
+        except Exception:
+            logger.exception("Could not save participant feedback")
+            return render_template(
+                "feedback.html",
+                error="We could not save your responses. "
+                      "Please try submitting again."
+            ), 500
 
         return redirect(url_for("study_thankyou"))
 
@@ -383,5 +435,5 @@ if __name__ == "__main__":
     app.run(
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", 5000)),
-        debug=os.environ.get("FLASK_DEBUG", "0") == "1"
+        debug=True
     )
