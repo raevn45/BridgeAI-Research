@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz {{ quiz_number }} | BridgeAI{% endblock %}
+
+{% block content %}
+<main class="container">
+    <section class="hero">
+        <h1>Bridge<span>AI</span> Study</h1>
+        <p>{{ phase_text }}</p>
+    </section>
+
+    <section class="input-area">
+        <span class="badge">{{ badge_text }}</span>
+        <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem;">{{ passage.title }}</h2>
+
+        <form method="POST" action="/study/quiz{{ quiz_number }}">
+            {% for q in questions %}
+            {% set outer_index = loop.index %}
+            <div class="question-block">
+                <p style="font-weight: 700; color: #fff; font-size: 1.05rem;">
+                    {{ outer_index }}. {{ q.question }}
+                </p>
+                <div class="options-grid">
+                    {% for opt in q.options %}
+                    <label class="option-card">
+                        <input type="radio" name="q{{ outer_index }}" value="{{ loop.index0 }}" required>
+                        <span>{{ opt }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="question-block" style="border-color: rgba(34, 211, 238, 0.3);">
+                <p style="font-weight: 700; color: var(--accent-cyan);">{{ confidence_question }}</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">1 = Very Low | 5 = Extremely High</p>
+
+                <div class="rating-grid">
+                    {% for i in range(1, 6) %}
+                    <div class="rating-pill">
+                        <label>
+                            <input type="radio" name="confidence" value="{{ i }}" {% if i == 3 %}checked{% endif %}>
+                            <span>{{ i }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit">{{ submit_label }}</button>
+        </form>
+    </section>
+</main>
+{% endblock %}
