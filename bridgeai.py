@@ -9,10 +9,9 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 MODELS = [
-    "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
 ]
 
 _client = None
