@@ -35,6 +35,8 @@ import database
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_TEXT_LENGTH = 20000
 MAX_NAME_LENGTH = 100
@@ -368,10 +370,10 @@ def study_simplified():
                 simplified_text=AI_UNAVAILABLE_MESSAGE
             )
 
-    return render_template(
-        "simplified.html",
-        simplified_text=render_markdown(raw_ai_response)
-    )
+        simplified_html = render_markdown(raw_ai_response)
+        session[cache_key] = simplified_html
+
+    return render_template("simplified.html", simplified_text=simplified_html)
 
 
 # ==========================================
