@@ -6,6 +6,9 @@ import secrets
 
 import markdown
 
+from PIL import Image
+from pypdf import PdfReader
+
 from flask import (
     Flask,
     render_template,
@@ -16,10 +19,6 @@ from flask import (
 )
 
 from dotenv import load_dotenv
-
-from PIL import Image, UnidentifiedImageError
-
-from pypdf import PdfReader
 
 from bridgeai import (
     AIServiceError,
@@ -36,13 +35,12 @@ import database
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
-
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_TEXT_LENGTH = 20000
 MAX_NAME_LENGTH = 100
 MAX_FEEDBACK_LENGTH = 2000
 MAX_PDF_PAGES = 50
+MAX_AGE = 120
 ALLOWED_AUDIENCES = {
     "General public",
     "Student",
@@ -57,10 +55,6 @@ app = Flask(__name__)
 
 secret_key = os.getenv("SECRET_KEY")
 if not secret_key:
-    logger.warning(
-        "SECRET_KEY is not set; generating an ephemeral key. "
-        "Sessions will be invalidated on restart."
-    )
     secret_key = secrets.token_hex(32)
 app.secret_key = secret_key
 
@@ -73,6 +67,12 @@ app.config.update(
 
 logging.basicConfig(level=logging.INFO)
 
+if not os.getenv("SECRET_KEY"):
+    logger.warning(
+        "SECRET_KEY is not set; using an ephemeral key. "
+        "Sessions will be invalidated on restart."
+    )
+
 database.init_db()
 
 AI_UNAVAILABLE_MESSAGE = (
@@ -81,41 +81,22 @@ AI_UNAVAILABLE_MESSAGE = (
 )
 
 
+# ==========================================
+# SHARED HELPERS
+# ==========================================
+
+def current_passage():
+    """Return the passage assigned to the current session."""
+    return get_passage(session["passage_id"])
+
+
 def render_markdown(text):
     """Render untrusted markdown without letting raw HTML through."""
     return markdown.markdown(html.escape(text))
 
 
-def extract_pdf_text(uploaded_file):
-    """Extract text from an uploaded PDF, or None when it cannot be read."""
-    try:
-        reader = PdfReader(uploaded_file)
-        pages = reader.pages[:MAX_PDF_PAGES]
-        return "".join(page.extract_text() or "" for page in pages)
-    except Exception:
-        logger.exception("Failed to read uploaded PDF")
-        return None
-
-
-def load_image(uploaded_file):
-    """Open an uploaded image, or None when it is not a valid image."""
-    try:
-        image = Image.open(uploaded_file)
-        image.verify()
-        uploaded_file.seek(0)
-        return Image.open(uploaded_file)
-    except (UnidentifiedImageError, OSError, ValueError):
-        logger.exception("Failed to read uploaded image")
-        return None
-
-
-def clean_audience(value):
-    """Restrict the audience to the values offered by the form."""
-    return value if value in ALLOWED_AUDIENCES else DEFAULT_AUDIENCE
-
-
 def parse_int(value, default, minimum=None, maximum=None):
-    """Parse an integer form field, falling back to a clamped default."""
+    """Parse a form value as an int, falling back to a clamped default."""
     try:
         parsed = int(value)
     except (TypeError, ValueError):
@@ -130,13 +111,32 @@ def parse_int(value, default, minimum=None, maximum=None):
     return parsed
 
 
-# ==========================================
-# SHARED HELPERS
-# ==========================================
+def clean_audience(value):
+    """Restrict the audience to the values offered by the form."""
+    return value if value in ALLOWED_AUDIENCES else DEFAULT_AUDIENCE
 
-def current_passage():
-    """Return the passage assigned to the current session."""
-    return get_passage(session["passage_id"])
+
+def extract_pdf_text(uploaded_file):
+    """Extract text from an uploaded PDF, or None when it cannot be read."""
+    try:
+        reader = PdfReader(uploaded_file)
+        pdf_text = ""
+        for page in reader.pages[:MAX_PDF_PAGES]:
+            pdf_text += page.extract_text() or ""
+    except Exception:
+        logger.exception("Failed to extract text from uploaded PDF")
+        return None
+
+    return pdf_text
+
+
+def load_image(uploaded_file):
+    """Open an uploaded image, or None when it is not a valid image."""
+    try:
+        return Image.open(uploaded_file)
+    except Exception:
+        logger.exception("Failed to open uploaded image")
+        return None
 
 
 def score_quiz(questions, form):
@@ -194,7 +194,9 @@ def bridge_app():
     if request.method == "POST":
 
         text = request.form.get("text", "")[:MAX_TEXT_LENGTH]
-        audience = clean_audience(request.form.get("audience", DEFAULT_AUDIENCE))
+        audience = clean_audience(
+            request.form.get("audience", DEFAULT_AUDIENCE)
+        )
         uploaded_file = request.files.get("file")
 
         content = ""
@@ -247,13 +249,19 @@ def bridge_app():
                     result=render_markdown(ai_text)
                 )
 
+            # UNSUPPORTED FILE TYPE
+            else:
+                return render_template(
+                    "index.html",
+                    result="<p>Unsupported file type. "
+                           "Please upload a PDF, PNG, or JPG file.</p>"
+                )
+
         if not content.strip():
-            result = render_markdown(
-                "Please upload a PDF, image, or paste text first."
-            )
+            result = "<p>Please upload a PDF, image, or paste text first.</p>"
         else:
             try:
-                ai_text = simplify_text(content, audience)
+                ai_text = simplify_text(content[:MAX_TEXT_LENGTH], audience)
             except AIServiceError:
                 logger.exception("Text simplification failed")
                 return render_template(
@@ -275,11 +283,10 @@ def study_consent():
 
     if request.method == "POST":
 
-        session["first_name"] = request.form.get(
-            "first_name", "Anonymous"
-        )[:MAX_NAME_LENGTH]
+        first_name = request.form.get("first_name", "").strip()
+        session["first_name"] = first_name[:MAX_NAME_LENGTH] or "Anonymous"
         session["age"] = parse_int(
-            request.form.get("age"), 0, minimum=0, maximum=120
+            request.form.get("age"), 0, minimum=0, maximum=MAX_AGE
         )
 
         # Select random passage
@@ -361,10 +368,10 @@ def study_simplified():
                 simplified_text=AI_UNAVAILABLE_MESSAGE
             )
 
-        simplified_html = render_markdown(raw_ai_response)
-        session[cache_key] = simplified_html
-
-    return render_template("simplified.html", simplified_text=simplified_html)
+    return render_template(
+        "simplified.html",
+        simplified_text=render_markdown(raw_ai_response)
+    )
 
 
 # ==========================================
