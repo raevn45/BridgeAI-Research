@@ -1,5 +1,7 @@
+import logging
 import os
 import random
+
 import markdown
 
 from PIL import Image
@@ -17,6 +19,7 @@ from flask import (
 from dotenv import load_dotenv
 
 from bridgeai import (
+    AIServiceError,
     simplify_text,
     analyze_image
 )
@@ -41,15 +44,15 @@ app.config["MAX_CONTENT_LENGTH"] = int(
     os.getenv("MAX_UPLOAD_BYTES", 10 * 1024 * 1024)
 )
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 database.init_db()
 
-
-def _safe_int(value, default=0):
-    """Parse an int from untrusted form input, falling back to a default."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+AI_UNAVAILABLE_MESSAGE = (
+    "<p>BridgeAI could not generate a simplification right now. "
+    "Please try again in a few moments.</p>"
+)
 
 
 # ==========================================
@@ -58,7 +61,16 @@ def _safe_int(value, default=0):
 
 def current_passage():
     """Return the passage assigned to the current session."""
-    return get_passage(session.get("passage_id", "medical"))
+    return get_passage(session["passage_id"])
+
+
+def parse_int(value, default):
+    """Parse a form value as an int, falling back to a default."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logger.info("Ignoring non-numeric form value %r", value)
+        return default
 
 
 def score_quiz(questions, form):
@@ -66,8 +78,8 @@ def score_quiz(questions, form):
     score = 0
 
     for index, question in enumerate(questions, start=1):
-        answer = form.get(f"q{index}")
-        if answer is not None and _safe_int(answer, -1) == question["answer"]:
+        answer = parse_int(form.get(f"q{index}"), None)
+        if answer is not None and answer == question["answer"]:
             score += 1
 
     return score
@@ -75,6 +87,9 @@ def score_quiz(questions, form):
 
 def run_quiz_step(quiz_number, confidence_key, next_endpoint):
     """Handle one comprehension quiz: score it, store it, move on."""
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
+
     passage = current_passage()
     questions = passage.get(f"quiz{quiz_number}_questions", [])
 
@@ -83,7 +98,9 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
             questions,
             request.form
         )
-        session[confidence_key] = _safe_int(request.form.get("confidence"), 3)
+        session[confidence_key] = parse_int(
+            request.form.get("confidence"), 3
+        )
 
         return redirect(url_for(next_endpoint))
 
@@ -132,31 +149,50 @@ def bridge_app():
                     pdf_text = ""
                     for page in reader.pages:
                         pdf_text += page.extract_text() or ""
-                    content += "\n\n" + pdf_text
-                except Exception as e:
-                    print("PDF parse error:", e)
-                    result = (
-                        "<p>Could not read that PDF. "
-                        "Please try a different file or paste the text.</p>"
+                except Exception:
+                    logger.exception("Failed to extract text from uploaded PDF")
+                    return render_template(
+                        "index.html",
+                        result="<p>That PDF could not be read. "
+                               "Please try a different file.</p>"
                     )
-                    return render_template("index.html", result=result)
+                content += "\n\n" + pdf_text
 
             # IMAGE PROCESSING
             elif filename.endswith((".png", ".jpg", ".jpeg")):
                 try:
                     image = Image.open(uploaded_file)
-                except Exception as e:
-                    print("Image open error:", e)
-                    result = "<p>Could not read that image. Please try another file.</p>"
-                    return render_template("index.html", result=result)
-                ai_text = analyze_image(image, audience)
+                except Exception:
+                    logger.exception("Failed to open uploaded image")
+                    return render_template(
+                        "index.html",
+                        result="<p>That image could not be read. "
+                               "Please try a different file.</p>"
+                    )
+
+                try:
+                    ai_text = analyze_image(image, audience)
+                except AIServiceError:
+                    logger.exception("Image analysis failed")
+                    return render_template(
+                        "index.html",
+                        result=AI_UNAVAILABLE_MESSAGE
+                    )
+
                 result = markdown.markdown(ai_text)
                 return render_template("index.html", result=result)
 
         if not content.strip():
             result = "<p>Please upload a PDF, image, or paste text first.</p>"
         else:
-            ai_text = simplify_text(content, audience)
+            try:
+                ai_text = simplify_text(content, audience)
+            except AIServiceError:
+                logger.exception("Text simplification failed")
+                return render_template(
+                    "index.html",
+                    result=AI_UNAVAILABLE_MESSAGE
+                )
             result = markdown.markdown(ai_text)
 
     return render_template("index.html", result=result)
@@ -172,11 +208,8 @@ def study_consent():
 
     if request.method == "POST":
 
-        first_name = request.form.get("first_name", "Anonymous")
-        age = _safe_int(request.form.get("age"), 0)
-
-        session["first_name"] = first_name
-        session["age"] = age
+        session["first_name"] = request.form.get("first_name", "Anonymous")
+        session["age"] = parse_int(request.form.get("age"), 0)
 
         # Select random passage
         passage_keys = list(PASSAGES.keys())
@@ -198,6 +231,9 @@ def study_consent():
 
 @app.route("/study/passage", methods=["GET", "POST"])
 def study_passage():
+
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
 
     group = session.get("group", "control")
     passage = current_passage()
@@ -225,24 +261,37 @@ def study_quiz1():
 @app.route("/study/simplified", methods=["GET", "POST"])
 def study_simplified():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = current_passage()
+    if "passage_id" not in session:
+        return redirect(url_for("study_consent"))
+
+    if request.method == "POST":
+        return redirect(url_for("study_quiz2"))
 
     # Generate the simplified passage once per participant/passage and cache it
     # in the session so page reloads don't trigger repeated (and differing)
     # Gemini calls during the study.
-    cache_key = f"simplified_html:{passage_id}"
+    cache_key = f"simplified_html:{session['passage_id']}"
     simplified_html = session.get(cache_key)
+
     if not simplified_html:
-        raw_ai_response = simplify_text(
-            passage["control_text"],
-            "General public"
-        )
+        passage = current_passage()
+        try:
+            raw_ai_response = simplify_text(
+                passage["control_text"],
+                "General public"
+            )
+        except AIServiceError:
+            logger.exception(
+                "Study simplification failed for passage %s",
+                session["passage_id"]
+            )
+            return render_template(
+                "simplified.html",
+                simplified_text=AI_UNAVAILABLE_MESSAGE
+            )
+
         simplified_html = markdown.markdown(raw_ai_response)
         session[cache_key] = simplified_html
-
-    if request.method == "POST":
-        return redirect(url_for("study_quiz2"))
 
     return render_template("simplified.html", simplified_text=simplified_html)
 
@@ -280,17 +329,25 @@ def study_feedback():
             f"Improvements: {improvements}"
         )
 
-        database.save_participant_data(
-            first_name=session.get("first_name", "Anonymous"),
-            age=session.get("age", 0),
-            passage_id=session.get("passage_id", "unknown"),
-            group_assignment=session.get("group", "unknown"),
-            quiz1_score=session.get("quiz1_score", 0),
-            confidence_before=session.get("confidence_before", 3),
-            quiz2_score=session.get("quiz2_score", 0),
-            confidence_after=session.get("confidence_after", 3),
-            feedback=feedback
-        )
+        try:
+            database.save_participant_data(
+                first_name=session.get("first_name", "Anonymous"),
+                age=session.get("age", 0),
+                passage_id=session.get("passage_id", "unknown"),
+                quiz1_score=session.get("quiz1_score", 0),
+                confidence_before=session.get("confidence_before", 3),
+                quiz2_score=session.get("quiz2_score", 0),
+                confidence_after=session.get("confidence_after", 3),
+                feedback=feedback,
+                group_assignment=session.get("group")
+            )
+        except Exception:
+            logger.exception("Could not save participant feedback")
+            return render_template(
+                "feedback.html",
+                error="We could not save your responses. "
+                      "Please try submitting again."
+            ), 500
 
         return redirect(url_for("study_thankyou"))
 
