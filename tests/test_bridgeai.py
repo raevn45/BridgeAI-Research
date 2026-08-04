@@ -62,13 +62,14 @@ def test_get_client_passes_api_key_and_caches_instance(fake_client):
     assert bridgeai._client is client
 
 
-def test_get_client_returns_none_without_api_key(monkeypatch):
+def test_get_client_raises_without_api_key(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-    assert bridgeai.get_client() is None
+    with pytest.raises(bridgeai.AIConfigurationError):
+        bridgeai.get_client()
 
 
-def test_get_client_returns_none_when_init_fails(monkeypatch):
+def test_get_client_raises_when_init_fails(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
     def broken_client(api_key=None):
@@ -76,7 +77,8 @@ def test_get_client_returns_none_when_init_fails(monkeypatch):
 
     monkeypatch.setattr(google.genai, "Client", broken_client)
 
-    assert bridgeai.get_client() is None
+    with pytest.raises(bridgeai.AIConfigurationError):
+        bridgeai.get_client()
     assert bridgeai._client is None
 
 
@@ -128,20 +130,19 @@ def test_generate_ai_response_skips_models_with_empty_text(fake_client):
     assert len(calls) == 2
 
 
-def test_generate_ai_response_reports_when_all_models_fail(fake_client):
+def test_generate_ai_response_raises_when_all_models_fail(fake_client):
     calls = fake_client(lambda model: RuntimeError("boom"))
 
-    assert bridgeai.generate_ai_response("hello") == bridgeai.UNAVAILABLE_MESSAGE
+    with pytest.raises(bridgeai.AIServiceError):
+        bridgeai.generate_ai_response("hello")
     assert len(calls) == len(bridgeai.MODELS)
 
 
-def test_generate_ai_response_reports_missing_api_key(monkeypatch):
+def test_generate_ai_response_raises_when_api_key_missing(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-    result = bridgeai.generate_ai_response("hello")
-
-    assert "BridgeAI Error" in result
-    assert "GEMINI_API_KEY` is missing" in result
+    with pytest.raises(bridgeai.AIConfigurationError):
+        bridgeai.generate_ai_response("hello")
 
 
 def test_simplify_text_builds_prompt_with_audience_and_text(fake_client):

@@ -1,8 +1,8 @@
+import html
 import logging
 import os
 import random
-
-import markdown
+import secrets
 
 import markdown
 
@@ -71,13 +71,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
 )
 
-# Cap upload size (default 10 MB) to avoid unbounded request bodies.
-app.config["MAX_CONTENT_LENGTH"] = int(
-    os.getenv("MAX_UPLOAD_BYTES", 10 * 1024 * 1024)
-)
-
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 database.init_db()
 
@@ -120,13 +114,20 @@ def clean_audience(value):
     return value if value in ALLOWED_AUDIENCES else DEFAULT_AUDIENCE
 
 
-def parse_int(value, default, minimum, maximum):
+def parse_int(value, default, minimum=None, maximum=None):
     """Parse an integer form field, falling back to a clamped default."""
     try:
         parsed = int(value)
     except (TypeError, ValueError):
+        logger.info("Ignoring non-numeric form value %r", value)
         return default
-    return max(minimum, min(maximum, parsed))
+
+    if minimum is not None:
+        parsed = max(minimum, parsed)
+    if maximum is not None:
+        parsed = min(maximum, parsed)
+
+    return parsed
 
 
 # ==========================================
@@ -136,15 +137,6 @@ def parse_int(value, default, minimum, maximum):
 def current_passage():
     """Return the passage assigned to the current session."""
     return get_passage(session["passage_id"])
-
-
-def parse_int(value, default):
-    """Parse a form value as an int, falling back to a default."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        logger.info("Ignoring non-numeric form value %r", value)
-        return default
 
 
 def score_quiz(questions, form):
@@ -173,7 +165,7 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
             request.form
         )
         session[confidence_key] = parse_int(
-            request.form.get("confidence"), 3
+            request.form.get("confidence"), 3, minimum=1, maximum=5
         )
 
         return redirect(url_for(next_endpoint))
@@ -217,31 +209,28 @@ def bridge_app():
             filename = uploaded_file.filename.lower()
 
             # PDF PROCESSING
-            if filename.endswith(".pdf"):
-                try:
-                    reader = PdfReader(uploaded_file)
-                    pdf_text = ""
-                    for page in reader.pages:
-                        pdf_text += page.extract_text() or ""
-                except Exception:
-                    logger.exception("Failed to extract text from uploaded PDF")
+            if filename.endswith(PDF_EXTENSIONS):
+                pdf_text = extract_pdf_text(uploaded_file)
+                if pdf_text is None:
                     return render_template(
                         "index.html",
-                        result="<p>That PDF could not be read. "
-                               "Please try a different file.</p>"
+                        result=render_markdown(
+                            "That PDF could not be read. "
+                            "Please try a different file."
+                        )
                     )
                 content += "\n\n" + pdf_text
 
             # IMAGE PROCESSING
-            elif filename.endswith((".png", ".jpg", ".jpeg")):
-                try:
-                    image = Image.open(uploaded_file)
-                except Exception:
-                    logger.exception("Failed to open uploaded image")
+            elif filename.endswith(IMAGE_EXTENSIONS):
+                image = load_image(uploaded_file)
+                if image is None:
                     return render_template(
                         "index.html",
-                        result="<p>That image could not be read. "
-                               "Please try a different file.</p>"
+                        result=render_markdown(
+                            "That image could not be read. "
+                            "Please try a different file."
+                        )
                     )
 
                 try:
@@ -253,8 +242,10 @@ def bridge_app():
                         result=AI_UNAVAILABLE_MESSAGE
                     )
 
-                result = markdown.markdown(ai_text)
-                return render_template("index.html", result=result)
+                return render_template(
+                    "index.html",
+                    result=render_markdown(ai_text)
+                )
 
         if not content.strip():
             result = render_markdown(
@@ -269,7 +260,7 @@ def bridge_app():
                     "index.html",
                     result=AI_UNAVAILABLE_MESSAGE
                 )
-            result = markdown.markdown(ai_text)
+            result = render_markdown(ai_text)
 
     return render_template("index.html", result=result)
 
@@ -284,8 +275,12 @@ def study_consent():
 
     if request.method == "POST":
 
-        session["first_name"] = request.form.get("first_name", "Anonymous")
-        session["age"] = parse_int(request.form.get("age"), 0)
+        session["first_name"] = request.form.get(
+            "first_name", "Anonymous"
+        )[:MAX_NAME_LENGTH]
+        session["age"] = parse_int(
+            request.form.get("age"), 0, minimum=0, maximum=120
+        )
 
         # Select random passage
         passage_keys = list(PASSAGES.keys())
@@ -366,7 +361,8 @@ def study_simplified():
                 simplified_text=AI_UNAVAILABLE_MESSAGE
             )
 
-    simplified_html = render_markdown(raw_ai_response)
+        simplified_html = render_markdown(raw_ai_response)
+        session[cache_key] = simplified_html
 
     return render_template("simplified.html", simplified_text=simplified_html)
 
