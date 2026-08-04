@@ -129,6 +129,23 @@ Visit `http://localhost:5000` in your browser.
 
 ---
 
+## Running Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+With a coverage report:
+
+```bash
+pytest --cov=app --cov=bridgeai --cov=database --cov=passages --cov-report=term-missing
+```
+
+Tests stub out Gemini API calls and use a temporary SQLite database, so no API key or network access is required.
+
+---
+
 ## Deployment
 
 BridgeAI is deployed for free on [PythonAnywhere](https://www.pythonanywhere.com), which offers:
