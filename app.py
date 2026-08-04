@@ -115,14 +115,48 @@ def parse_int(value, default, minimum, maximum):
     return max(minimum, min(maximum, parsed))
 
 
-def score_quiz(questions):
-    """Score submitted answers against the expected question answers."""
+# ==========================================
+# SHARED HELPERS
+# ==========================================
+
+def current_passage():
+    """Return the passage assigned to the current session."""
+    return get_passage(session.get("passage_id", "medical"))
+
+
+def score_quiz(questions, form):
+    """Count how many submitted answers match the correct option index."""
     score = 0
+
     for index, question in enumerate(questions, start=1):
-        answer = parse_int(request.form.get(f"q{index}"), None, 0, 10)
+        answer = parse_int(form.get(f"q{index}"), None, 0, 10)
         if answer is not None and answer == question["answer"]:
             score += 1
+
     return score
+
+
+def run_quiz_step(quiz_number, confidence_key, next_endpoint):
+    """Handle one comprehension quiz: score it, store it, move on."""
+    passage = current_passage()
+    questions = passage.get(f"quiz{quiz_number}_questions", [])
+
+    if request.method == "POST":
+        session[f"quiz{quiz_number}_score"] = score_quiz(
+            questions,
+            request.form
+        )
+        session[confidence_key] = parse_int(
+            request.form.get("confidence"), 3, 1, 5
+        )
+
+        return redirect(url_for(next_endpoint))
+
+    return render_template(
+        f"quiz{quiz_number}.html",
+        passage=passage,
+        questions=questions
+    )
 
 
 # ==========================================
@@ -236,9 +270,8 @@ def study_consent():
 @app.route("/study/passage", methods=["GET", "POST"])
 def study_passage():
 
-    passage_id = session.get("passage_id", "medical")
     group = session.get("group", "control")
-    passage = get_passage(passage_id)
+    passage = current_passage()
 
     if request.method == "POST":
         return redirect(url_for("study_quiz1"))
@@ -249,19 +282,11 @@ def study_passage():
 @app.route("/study/quiz1", methods=["GET", "POST"])
 def study_quiz1():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
-    questions = passage.get("quiz1_questions", [])
-
-    if request.method == "POST":
-        session["quiz1_score"] = score_quiz(questions)
-        session["confidence_before"] = parse_int(
-            request.form.get("confidence"), 3, 1, 5
-        )
-
-        return redirect(url_for("study_simplified"))
-
-    return render_template("quiz1.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=1,
+        confidence_key="confidence_before",
+        next_endpoint="study_simplified"
+    )
 
 
 # ==========================================
@@ -271,8 +296,7 @@ def study_quiz1():
 @app.route("/study/simplified", methods=["GET", "POST"])
 def study_simplified():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
+    passage = current_passage()
 
     raw_ai_response = simplify_text(
         passage["control_text"],
@@ -294,19 +318,11 @@ def study_simplified():
 @app.route("/study/quiz2", methods=["GET", "POST"])
 def study_quiz2():
 
-    passage_id = session.get("passage_id", "medical")
-    passage = get_passage(passage_id)
-    questions = passage.get("quiz2_questions", [])
-
-    if request.method == "POST":
-        session["quiz2_score"] = score_quiz(questions)
-        session["confidence_after"] = parse_int(
-            request.form.get("confidence"), 3, 1, 5
-        )
-
-        return redirect(url_for("study_feedback"))
-
-    return render_template("quiz2.html", passage=passage, questions=questions)
+    return run_quiz_step(
+        quiz_number=2,
+        confidence_key="confidence_after",
+        next_endpoint="study_feedback"
+    )
 
 
 # ==========================================

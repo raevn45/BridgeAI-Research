@@ -1,39 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BridgeAI</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
-</head>
+{% set brand = "BridgeAI" %}
+{% set tagline = "AI Accessibility Operating System" %}
+{% set status_label = "ONLINE" %}
+{% set status_text = "Ready" %}
+{% set fog_highlight = "0x00f7ff" %}
+{% set fog_lowlight = "0x040816" %}
+{% set fog_base = "0x030712" %}
+{% set fog_speed = 1.6 %}
+{% set fog_zoom = 0.65 %}
 
-<body>
-
-<div id="fog-bg"></div>
-<div class="noise"></div>
-<div id="cursor"></div>
-
-<header class="topbar">
-    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
-        <div class="logo-orb"></div>
-        <div>
-            <h2>BridgeAI</h2>
-            <p>AI Accessibility Operating System</p>
-        </div>
-    </a>
-    <div class="status">
-        <div class="status-dot"></div>
-        <div>
-            <span>ONLINE</span>
-            <p>Ready</p>
-        </div>
-    </div>
-</header>
-
+{% block content %}
 <main class="dashboard">
 
     <section class="left-panel glass">
@@ -127,24 +104,4 @@
     </section>
 
 </main>
-
-<script src="{{ url_for('static', filename='script.js') }}"></script>
-
-<script>
-    VANTA.FOG({
-        el:"#fog-bg",
-        mouseControls:true,
-        touchControls:true,
-        gyroControls:false,
-        highlightColor:0x00f7ff,
-        midtoneColor:0x6d28d9,
-        lowlightColor:0x040816,
-        baseColor:0x030712,
-        blurFactor:0.8,
-        speed:1.6,
-        zoom:0.65
-    });
-</script>
-
-</body>
-</html>
+{% endblock %}
