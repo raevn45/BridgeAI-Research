@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BridgeAI Research</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+</head>
+
+<body>
+
+<div id="fog-bg"></div>
+<div class="noise"></div>
+<div id="cursor"></div>
+
+<header class="topbar">
+    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
+        <div class="logo-orb"></div>
+        <div>
+            <h2>BridgeAI Research</h2>
+            <p>AI Comprehension Study</p>
+        </div>
+    </a>
+    <div class="status">
+        <div class="status-dot"></div>
+        <div>
+            <span>LIVE</span>
+            <p>Participant Portal</p>
+        </div>
+    </div>
+</header>
+
+<main style="display:flex;justify-content:center;align-items:center;min-height:85vh;">
+
+    <div class="glass" style="width:min(650px,92%);">
+
+        <div class="section-title">
+            <span>STEP 1</span>
+            <h1>Welcome.</h1>
+            <p>
+                You're helping evaluate whether AI-powered simplification genuinely improves human understanding.
+                This study takes approximately <strong>5 minutes.</strong>
+            </p>
+        </div>
+
+        <form method="POST">
+
+            <div class="editor-card">
+                <label>First Name</label>
+                <input type="text" name="first_name" required placeholder="Your first name" class="research-input">
+            </div>
+
+            <div class="editor-card">
+                <label>Age</label>
+                <input type="number" name="age" required min="10" max="100" placeholder="Age" class="research-input">
+            </div>
+
+            <button class="analyze-btn">
+                <span>Begin Study</span>
+                <div class="arrow">→</div>
+            </button>
+
+        </form>
+
+    </div>
+
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    VANTA.FOG({
+        el:"#fog-bg",
+        mouseControls:true,
+        touchControls:true,
+        gyroControls:false,
+        highlightColor:0x00ffff,
+        midtoneColor:0x6d28d9,
+        lowlightColor:0x030712,
+        baseColor:0x020617,
+        blurFactor:0.8,
+        speed:1.5,
+        zoom:0.7
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Simplified View | BridgeAI Research</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+</head>
+<body>
+
+<div id="fog-bg"></div>
+<div class="noise"></div>
+<div id="cursor"></div>
+
+<header class="topbar">
+    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
+        <div class="logo-orb"></div>
+        <div>
+            <h2>BridgeAI Research</h2>
+            <p>AI Comprehension Study</p>
+        </div>
+    </a>
+    <div class="status">
+        <div class="status-dot"></div>
+        <div>
+            <span>STEP 4</span>
+            <p>AI Simplification</p>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <section class="hero">
+        <h1>Bridge<span>AI</span> Research</h1>
+        <p>Phase 2: AI-Assisted Reading View</p>
+    </section>
+
+    <section class="workspace" style="grid-template-columns: 1fr; max-width: 800px; margin: 0 auto;">
+        <div class="input-area">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 1rem;">
+                <div>
+                    <span style="color: #22d3ee; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">BridgeAI Generated Simplification</span>
+                    <h2 style="margin-top: 0.2rem; font-size: 1.4rem;">Simplified Passage Overview</h2>
+                </div>
+                <span style="background: rgba(34, 211, 238, 0.15); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); font-size: 0.85rem; padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 600;">
+                    AI Phase
+                </span>
+            </div>
+
+            <div class="result" style="background: rgba(3, 7, 18, 0.5); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 14px; padding: 1.8rem; margin-bottom: 2rem; line-height: 1.8; color: #f1f5f9;">
+                {{ simplified_text | safe }}
+            </div>
+
+            <form method="POST" action="/study/simplified">
+                <button type="submit">I Have Read The AI Simplification → Continue to Quiz 2</button>
+            </form>
+
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    VANTA.FOG({
+        el:"#fog-bg",
+        mouseControls:true,
+        touchControls:true,
+        gyroControls:false,
+        highlightColor:0x00ffff,
+        midtoneColor:0x6d28d9,
+        lowlightColor:0x030712,
+        baseColor:0x020617,
+        blurFactor:0.8,
+        speed:1.5,
+        zoom:0.7
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You | BridgeAI Research</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+</head>
+<body>
+
+<div id="fog-bg"></div>
+<div class="noise"></div>
+<div id="cursor"></div>
+
+<header class="topbar">
+    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
+        <div class="logo-orb"></div>
+        <div>
+            <h2>BridgeAI Research</h2>
+            <p>AI Comprehension Study</p>
+        </div>
+    </a>
+    <div class="status">
+        <div class="status-dot"></div>
+        <div>
+            <span>COMPLETE</span>
+            <p>Study Finished</p>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <section class="hero">
+        <h1>Bridge<span>AI</span> Research</h1>
+        <p>Study Complete</p>
+    </section>
+
+    <section class="workspace" style="grid-template-columns: 1fr; max-width: 650px; margin: 0 auto; text-align: center;">
+        <div class="input-area" style="padding: 3rem 2rem;">
+
+            <div style="width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, #22d3ee 0%, rgba(34, 211, 238, 0.1) 70%); box-shadow: 0 0 30px rgba(34, 211, 238, 0.6); margin: 0 auto 1.5rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #050816; font-weight: bold;">
+                ✦
+            </div>
+
+            <h2 style="font-size: 2rem; color: #f1f5f9; margin-bottom: 1rem;">Thank You for Participating!</h2>
+
+            <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.7; margin-bottom: 2.5rem;">
+                Your responses, reading metrics, and feedback have been securely recorded. Your contribution directly helps us measure how AI simplification enhances information clarity and human comprehension.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 320px; margin: 0 auto;">
+                <a href="/app" style="display: block; text-decoration: none; text-align: center; background: #22d3ee; color: #050816; font-weight: 700; padding: 0.9rem; border-radius: 10px; transition: all 0.2s ease;">
+                    Try BridgeAI Tool →
+                </a>
+                <a href="/" style="display: block; text-decoration: none; text-align: center; background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); padding: 0.9rem; border-radius: 10px; transition: all 0.2s ease;">
+                    Return to Home Page
+                </a>
+            </div>
+
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    VANTA.FOG({
+        el:"#fog-bg",
+        mouseControls:true,
+        touchControls:true,
+        gyroControls:false,
+        highlightColor:0x00ffff,
+        midtoneColor:0x6d28d9,
+        lowlightColor:0x030712,
+        baseColor:0x020617,
+        blurFactor:0.8,
+        speed:1.5,
+        zoom:0.7
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback | BridgeAI Research</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+</head>
+<body>
+
+<div id="fog-bg"></div>
+<div class="noise"></div>
+<div id="cursor"></div>
+
+<header class="topbar">
+    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
+        <div class="logo-orb"></div>
+        <div>
+            <h2>BridgeAI Research</h2>
+            <p>AI Comprehension Study</p>
+        </div>
+    </a>
+    <div class="status">
+        <div class="status-dot"></div>
+        <div>
+            <span>STEP 6</span>
+            <p>Feedback</p>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <section class="hero">
+        <h1>Bridge<span>AI</span> Research</h1>
+        <p>Final Step: Participant Feedback</p>
+    </section>
+
+    <section class="workspace" style="grid-template-columns: 1fr; max-width: 750px; margin: 0 auto;">
+        <div class="input-area">
+
+            <h2 style="margin-bottom: 0.5rem;">Your Experience &amp; Feedback</h2>
+            <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem;">Please share your honest feedback to help us evaluate the impact of BridgeAI.</p>
+
+            <form method="POST" action="/study/feedback">
+                <div style="display: flex; flex-direction: column; gap: 1.8rem; margin-bottom: 2rem;">
+
+                    <div style="background: rgba(5, 8, 22, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.2rem;">
+                        <label style="font-size: 1rem; color: #f1f5f9; display: block; margin-bottom: 0.8rem; font-weight: 500;">
+                            1. Overall, was the AI simplification helpful in improving your understanding?
+                        </label>
+                        <select name="helpful_rating" required style="width: 100%; padding: 0.8rem; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem;">
+                            <option value="" disabled selected>Select an option...</option>
+                            <option value="Extremely Helpful">Extremely Helpful</option>
+                            <option value="Moderately Helpful">Moderately Helpful</option>
+                            <option value="Neutral">Neutral</option>
+                            <option value="Not Very Helpful">Not Very Helpful</option>
+                            <option value="Confusing">It made it more confusing</option>
+                        </select>
+                    </div>
+
+                    <div style="background: rgba(5, 8, 22, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.2rem;">
+                        <label style="font-size: 1rem; color: #f1f5f9; display: block; margin-bottom: 0.8rem; font-weight: 500;">
+                            2. What would you say about this tool or experience overall?
+                        </label>
+                        <textarea name="overall_impression" placeholder="Share your general thoughts, initial reactions, or overall impressions..." style="height: 100px; margin-bottom: 0;"></textarea>
+                    </div>
+
+                    <div style="background: rgba(5, 8, 22, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.2rem;">
+                        <label style="font-size: 1rem; color: #f1f5f9; display: block; margin-bottom: 0.8rem; font-weight: 500;">
+                            3. Was there anything that was still confusing or could be improved in the AI response?
+                        </label>
+                        <textarea name="improvements" placeholder="Let us know what was unclear or how BridgeAI could simplify better..." style="height: 100px; margin-bottom: 0;"></textarea>
+                    </div>
+
+                </div>
+
+                <button type="submit" style="width: 100%;">Complete Study &amp; Save Results →</button>
+            </form>
+
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    VANTA.FOG({
+        el:"#fog-bg",
+        mouseControls:true,
+        touchControls:true,
+        gyroControls:false,
+        highlightColor:0x00ffff,
+        midtoneColor:0x6d28d9,
+        lowlightColor:0x030712,
+        baseColor:0x020617,
+        blurFactor:0.8,
+        speed:1.5,
+        zoom:0.7
+    });
+</script>
+
+</body>
+</html>
