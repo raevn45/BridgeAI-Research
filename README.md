@@ -100,8 +100,8 @@ All responses are stored in a local SQLite database for analysis.
 Clone the repository:
 
 ```bash
-git clone YOUR_REPOSITORY_LINK
-cd bridgeai-research
+git clone https://github.com/raevn45/BridgeAI-Research
+cd BridgeAI-Research
 ```
 
 Create a virtual environment and install dependencies:
