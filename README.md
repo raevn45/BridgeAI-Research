@@ -143,6 +143,8 @@ To deploy:
 4. Set up a new web app under the **Web** tab (Manual configuration → Flask)
 5. Point the WSGI file to your `app` object and reload
 
+https://raevn00.pythonanywhere.com/app
+
 ---
 
 ## Accessing Research Data
