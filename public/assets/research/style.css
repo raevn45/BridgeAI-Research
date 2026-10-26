@@ -762,3 +762,31 @@ select option{
 .input-area a:hover{
     transform:translateY(-2px);
 }
+
+/* Shared navigation across the tool and research flow */
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.site-nav a {
+    color: rgba(255,255,255,.72);
+    text-decoration: none;
+    padding: 11px 16px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    font-size: 14px;
+    transition: .25s ease;
+}
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+    color: #fff;
+    border-color: rgba(34,211,238,.35);
+    background: rgba(34,211,238,.08);
+}
+@media(max-width:760px) {
+    .topbar { flex-wrap: wrap; gap: 16px; padding: 20px; }
+    .site-nav { order: 3; width: 100%; }
+    .site-nav a { flex: 1; text-align: center; padding: 10px 8px; }
+    .status { margin-left: auto; }
+}
