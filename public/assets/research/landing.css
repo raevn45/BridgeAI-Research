@@ -272,3 +272,77 @@ p{
     .circle{width:140px;height:140px;}
     .buttons{width:90%;}
 }
+
+/* Shared site header and navigation */
+.topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    width: 100%;
+    padding: 22px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    background: rgba(255,255,255,.025);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(22px);
+}
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+.logo h2 { font-size: 24px; font-weight: 700; }
+.logo p { margin: 3px 0 0; font-size: 12px; text-align: left; }
+.logo-orb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#7c3aed);
+    box-shadow: 0 0 24px #22d3ee;
+}
+.site-nav { display: flex; align-items: center; gap: 10px; }
+.site-nav a {
+    color: rgba(255,255,255,.72);
+    text-decoration: none;
+    padding: 11px 16px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    font-size: 14px;
+    transition: .25s ease;
+}
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+    color: #fff;
+    border-color: rgba(34,211,238,.35);
+    background: rgba(34,211,238,.08);
+}
+.status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 13px;
+    border-radius: 15px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    flex-shrink: 0;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00ff95;
+    box-shadow: 0 0 14px #00ff95;
+}
+.status span { font-size: 10px; letter-spacing: 1.5px; color: #22d3ee; }
+.status p { margin: 2px 0 0; font-size: 12px; text-align: left; }
+@media(max-width:900px) {
+    .topbar { padding: 16px 20px; flex-wrap: wrap; }
+    .site-nav { order: 3; width: 100%; justify-content: center; }
+    .site-nav a { flex: 1; text-align: center; padding: 10px 8px; }
+    .status { margin-left: auto; }
+    .footer { letter-spacing: 1px; font-size: 11px; text-align: center; width: 90%; }
+}
