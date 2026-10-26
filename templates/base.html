@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BridgeAI{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename=stylesheet|default('style.css')) }}">
+    <link rel="stylesheet" href="/assets/research/{{ stylesheet|default('style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.{{ vanta_effect|default('fog') }}.min.js"></script>
@@ -21,18 +21,22 @@
 
 {% block header %}
 <header class="topbar">
-    <a class="logo" href="/" style="text-decoration:none;color:inherit;">
+    <a class="logo" href="/" aria-label="BridgeAI home" style="text-decoration:none;color:inherit;">
         <div class="logo-orb"></div>
         <div>
-            <h2>{{ brand|default('BridgeAI Research') }}</h2>
-            <p>{{ tagline|default('AI Comprehension Study') }}</p>
+            <h2>BridgeAI</h2>
+            <p>Understand more. Together.</p>
         </div>
     </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="{{ url_for('bridge_app') }}"{% if request.endpoint == 'bridge_app' %} aria-current="page"{% endif %}>Simplify</a>
+        <a href="{{ url_for('study_consent') }}"{% if request.endpoint in ['study_consent', 'study_passage', 'study_quiz1', 'study_simplified', 'study_quiz2', 'study_feedback', 'study_thankyou'] %} aria-current="page"{% endif %}>Research study</a>
+    </nav>
     <div class="status">
         <div class="status-dot"></div>
         <div>
-            <span>{{ status_label }}</span>
-            <p>{{ status_text }}</p>
+            <span>{{ status_label|default('BRIDGEAI') }}</span>
+            <p>{{ status_text|default('Two tools, one bridge') }}</p>
         </div>
     </div>
 </header>
@@ -41,24 +45,26 @@
 {% block content %}{% endblock %}
 
 {% block base_scripts %}
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="/assets/research/script.js"></script>
 {% endblock %}
 
 {% block vanta %}
 <script>
-    VANTA.FOG({
-        el:"#fog-bg",
-        mouseControls:true,
-        touchControls:true,
-        gyroControls:false,
-        highlightColor:{{ fog_highlight|default('0x00ffff') }},
-        midtoneColor:0x6d28d9,
-        lowlightColor:{{ fog_lowlight|default('0x030712') }},
-        baseColor:{{ fog_base|default('0x020617') }},
-        blurFactor:0.8,
-        speed:{{ fog_speed|default(1.5) }},
-        zoom:{{ fog_zoom|default(0.7) }}
-    });
+    if (window.VANTA && document.querySelector("#fog-bg")) {
+        VANTA.FOG({
+            el:"#fog-bg",
+            mouseControls:true,
+            touchControls:true,
+            gyroControls:false,
+            highlightColor:{{ fog_highlight|default('0x00ffff') }},
+            midtoneColor:0x6d28d9,
+            lowlightColor:{{ fog_lowlight|default('0x030712') }},
+            baseColor:{{ fog_base|default('0x020617') }},
+            blurFactor:0.8,
+            speed:{{ fog_speed|default(1.5) }},
+            zoom:{{ fog_zoom|default(0.7) }}
+        });
+    }
 </script>
 {% endblock %}
 
