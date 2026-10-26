@@ -105,12 +105,12 @@ def test_generate_ai_response_returns_first_successful_model(fake_client):
     calls = fake_client(lambda model: "simple explanation")
 
     assert bridgeai.generate_ai_response("hello") == "simple explanation"
-    assert calls == [("gemini-2.5-flash", "hello")]
+    assert calls == [(bridgeai.MODELS[0], "hello")]
 
 
 def test_generate_ai_response_falls_back_after_failures(fake_client):
     def behaviour(model):
-        if model != "gemini-2.0-flash":
+        if model != bridgeai.MODELS[-1]:
             return RuntimeError("model unavailable")
         return "fallback answer"
 
@@ -122,7 +122,7 @@ def test_generate_ai_response_falls_back_after_failures(fake_client):
 
 def test_generate_ai_response_skips_models_with_empty_text(fake_client):
     def behaviour(model):
-        return "" if model == "gemini-2.5-flash" else "second answer"
+        return "" if model == bridgeai.MODELS[0] else "second answer"
 
     calls = fake_client(behaviour)
 
