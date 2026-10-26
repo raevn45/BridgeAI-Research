@@ -1,4 +1,5 @@
 import html
+import hmac
 import logging
 import os
 import random
@@ -258,17 +259,23 @@ def bridge_app():
 # ==========================================
 
 
-@app.route("/export-data")
+@app.route("/export-data", methods=["GET"])
 def export_data():
-    token = request.args.get("token")
-    if token != "apples":
-        return "Unauthorized", 403
+    # Keep the export credential out of URLs, browser history, and access logs.
+    expected_token = os.getenv("ADMIN_EXPORT_TOKEN")
+    supplied = request.headers.get("Authorization", "")
+    if not expected_token or not supplied.startswith("Bearer "):
+        return "Not found", 404
+
+    supplied_token = supplied[len("Bearer "):].strip()
+    if not hmac.compare_digest(supplied_token, expected_token):
+        return "Unauthorized", 401
 
     try:
-        data = database.get_all_participant_data()
-        return {"data": data}
-    except Exception as e:
-        return {"error": str(e)}, 500
+        return {"data": database.get_all_participant_data()}
+    except Exception:
+        logger.exception("Participant data export failed")
+        return {"error": "Export unavailable"}, 500
 
 
 # ==========================================
