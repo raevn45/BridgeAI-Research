@@ -2,6 +2,8 @@
 
 {% set stylesheet = "landing.css" %}
 {% set vanta_effect = "net" %}
+{% set status_label = "WELCOME" %}
+{% set status_text = "Choose your path" %}
 
 {% block background %}
 <div id="network"></div>
@@ -11,29 +13,23 @@
 <div id="cursor"></div>
 {% endblock %}
 
-{% block header %}{% endblock %}
-
 {% block content %}
-<div class="landing">
-
+<main class="landing">
     <div class="hero">
-
         <div class="orb">
             <div class="circle"></div>
         </div>
 
-        <h1>
-            Bridge<span>AI</span>
-        </h1>
+        <h1>Bridge<span>AI</span></h1>
 
         <p>
-            Decode Complexity.
+            Decode complexity.
             <br>
-            Understand Everything.
+            Understand everything.
         </p>
 
         <div class="buttons">
-            <a href="/app">
+            <a href="{{ url_for('bridge_app') }}">
                 Launch BridgeAI
                 <span>→</span>
             </a>
@@ -42,49 +38,50 @@
                 <span>→</span>
             </a>
         </div>
-
     </div>
 
     <div class="footer">
         AI Accessibility • Research • Human Understanding
     </div>
-
-</div>
+</main>
 {% endblock %}
 
 {% block base_scripts %}{% endblock %}
 
 {% block vanta %}
 <script>
-    VANTA.NET({
-        el:"#network",
-        mouseControls:true,
-        touchControls:true,
-        gyroControls:false,
-        minHeight:200,
-        minWidth:200,
-        scale:1,
-        scaleMobile:1,
-        color:0x22d3ee,
-        backgroundColor:0x050816,
-        points:16,
-        maxDistance:24,
-        spacing:18
+    if (window.VANTA) {
+        VANTA.NET({
+            el:"#network",
+            mouseControls:true,
+            touchControls:true,
+            gyroControls:false,
+            minHeight:200,
+            minWidth:200,
+            scale:1,
+            scaleMobile:1,
+            color:0x22d3ee,
+            backgroundColor:0x050816,
+            points:16,
+            maxDistance:24,
+            spacing:18
+        });
+    }
+
+    const cursor = document.getElementById("cursor");
+    document.addEventListener("mousemove", (event) => {
+        if (cursor) {
+            cursor.style.left = event.clientX + "px";
+            cursor.style.top = event.clientY + "px";
+        }
     });
 
-    // ---------- Cursor ----------
-    const cursor=document.getElementById("cursor");
-    document.addEventListener("mousemove",(e)=>{
-        cursor.style.left=e.clientX+"px";
-        cursor.style.top=e.clientY+"px";
-    });
-
-    // ---------- Hero Parallax ----------
-    const hero=document.querySelector(".hero");
-    document.addEventListener("mousemove",(e)=>{
-        const x=(e.clientX/window.innerWidth-.5)*18;
-        const y=(e.clientY/window.innerHeight-.5)*18;
-        hero.style.transform=`translate(${x}px,${y}px)`;
+    const hero = document.querySelector(".hero");
+    document.addEventListener("mousemove", (event) => {
+        if (!hero || window.innerWidth < 768) return;
+        const x = (event.clientX / window.innerWidth - 0.5) * 12;
+        const y = (event.clientY / window.innerHeight - 0.5) * 12;
+        hero.style.transform = `translate(${x}px, ${y}px)`;
     });
 </script>
 {% endblock %}

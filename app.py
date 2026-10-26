@@ -1,4 +1,5 @@
 import html
+import hmac
 import logging
 import os
 import random
@@ -9,7 +10,7 @@ import markdown
 from PIL import Image
 from pypdf import PdfReader
 
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 
 from dotenv import load_dotenv
 
@@ -166,6 +167,12 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
 # ==========================================
 
 
+@app.route("/assets/<path:filename>")
+def public_assets(filename):
+    """Serve Vercel public assets when running locally; Vercel serves these directly in production."""
+    return send_from_directory(os.path.join(app.root_path, "public", "assets"), filename, max_age=86400)
+
+
 @app.route("/healthz")
 def healthcheck():
     """Lightweight health check endpoint for Replit deployments."""
@@ -258,17 +265,23 @@ def bridge_app():
 # ==========================================
 
 
-@app.route("/export-data")
+@app.route("/export-data", methods=["GET"])
 def export_data():
-    token = request.args.get("token")
-    if token != "apples":
-        return "Unauthorized", 403
+    # Keep the export credential out of URLs, browser history, and access logs.
+    expected_token = os.getenv("ADMIN_EXPORT_TOKEN")
+    supplied = request.headers.get("Authorization", "")
+    if not expected_token or not supplied.startswith("Bearer "):
+        return "Not found", 404
+
+    supplied_token = supplied[len("Bearer "):].strip()
+    if not hmac.compare_digest(supplied_token, expected_token):
+        return "Unauthorized", 401
 
     try:
-        data = database.get_all_participant_data()
-        return {"data": data}
-    except Exception as e:
-        return {"error": str(e)}, 500
+        return {"data": database.get_all_participant_data()}
+    except Exception:
+        logger.exception("Participant data export failed")
+        return {"error": "Export unavailable"}, 500
 
 
 # ==========================================
