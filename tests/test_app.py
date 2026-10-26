@@ -261,3 +261,21 @@ def test_feedback_post_falls_back_to_session_defaults(client, temp_db):
     assert row["quiz1_score"] == 0
     assert row["confidence_before"] == 3
     assert row["feedback"] == "Rating: Neutral | Experience:  | Improvements: "
+
+
+
+def test_unified_homepage_links_both_experiences(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert b'href="/app"' in response.data
+    assert b'href="/research"' in response.data
+    assert b"Simplify" in response.data
+    assert b"Research study" in response.data
+
+
+def test_public_asset_fallback_serves_shared_styles(client):
+    response = client.get("/assets/research/style.css")
+
+    assert response.status_code == 200
+    assert b".site-nav" in response.data
