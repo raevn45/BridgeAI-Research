@@ -10,7 +10,7 @@ import markdown
 from PIL import Image
 from pypdf import PdfReader
 
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 
 from dotenv import load_dotenv
 
@@ -165,6 +165,12 @@ def run_quiz_step(quiz_number, confidence_key, next_endpoint):
 # ==========================================
 # HEALTHCHECK ROUTE FOR DEPLOYMENT
 # ==========================================
+
+
+@app.route("/assets/<path:filename>")
+def public_assets(filename):
+    """Serve Vercel public assets when running locally; Vercel serves these directly in production."""
+    return send_from_directory(os.path.join(app.root_path, "public"), filename, max_age=86400)
 
 
 @app.route("/healthz")
