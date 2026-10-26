@@ -5,3 +5,4 @@ pypdf>=6.0
 Markdown>=3.10
 python-dotenv>=1.0
 gunicorn
+psycopg[binary]>=3.2
