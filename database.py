@@ -40,6 +40,8 @@ class CursorAdapter:
 @contextmanager
 def get_cursor():
     database_url = os.getenv("DATABASE_URL")
+    if not database_url and os.getenv("VERCEL") == "1":
+        raise RuntimeError("Set DATABASE_URL to a managed PostgreSQL database before using the research app on Vercel.")
     if database_url:
         try:
             import psycopg
