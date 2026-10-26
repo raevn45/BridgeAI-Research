@@ -30,7 +30,7 @@
     </a>
     <nav class="site-nav" aria-label="Main navigation">
         <a href="{{ url_for('bridge_app') }}"{% if request.endpoint == 'bridge_app' %} aria-current="page"{% endif %}>Simplify</a>
-        <a href="{{ url_for('study_consent') }}"{% if request.endpoint in ['study_consent', 'study_passage', 'study_quiz1', 'study_simplified', 'study_quiz2', 'study_feedback', 'study_thankyou'] %} aria-current="page"{% endif %}>Research study</a>
+        <a href="/research"{% if request.endpoint in ['study_consent', 'study_passage', 'study_quiz1', 'study_simplified', 'study_quiz2', 'study_feedback', 'study_thankyou'] %} aria-current="page"{% endif %}>Research study</a>
     </nav>
     <div class="status">
         <div class="status-dot"></div>
