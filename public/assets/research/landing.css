@@ -1,0 +1,274 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    font-family:"Space Grotesk",sans-serif;
+    background:#050816;
+    color:white;
+    height:100vh;
+    overflow:hidden;
+}
+
+/* ---------------- Background ---------------- */
+
+#network{
+    position:fixed;
+    inset:0;
+    z-index:-5;
+}
+
+.gradient1{
+    position:fixed;
+    width:700px;
+    height:700px;
+    border-radius:50%;
+    background:#00f5ff;
+    filter:blur(170px);
+    opacity:.08;
+    top:-250px;
+    left:-250px;
+    animation:float1 16s ease-in-out infinite;
+    z-index:-4;
+}
+
+.gradient2{
+    position:fixed;
+    width:650px;
+    height:650px;
+    border-radius:50%;
+    background:#7c3aed;
+    filter:blur(170px);
+    opacity:.08;
+    bottom:-250px;
+    right:-250px;
+    animation:float2 18s ease-in-out infinite;
+    z-index:-4;
+}
+
+.noise{
+    position:fixed;
+    inset:0;
+    background-image:
+        radial-gradient(rgba(255,255,255,.08) 1px,transparent 1px);
+    background-size:18px 18px;
+    opacity:.02;
+    pointer-events:none;
+    z-index:-3;
+}
+
+/* ---------------- Cursor ---------------- */
+
+#cursor{
+    position:fixed;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:#22d3ee;
+    box-shadow:
+        0 0 25px #22d3ee,
+        0 0 60px rgba(34,211,238,.5);
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    transition:
+        left .05s linear,
+        top .05s linear;
+    z-index:9999;
+}
+
+/* ---------------- Layout ---------------- */
+
+.landing{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    position:relative;
+}
+
+.hero{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    transition:transform .25s ease;
+}
+
+/* ---------------- Orb ---------------- */
+
+.orb{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin-bottom:45px;
+}
+
+.circle{
+    width:180px;
+    height:180px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.15);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.08),
+            rgba(255,255,255,.03)
+        );
+    backdrop-filter:blur(35px);
+    box-shadow:
+        0 0 90px rgba(34,211,238,.18),
+        inset 0 0 35px rgba(255,255,255,.08);
+    animation:
+        pulse 5s ease-in-out infinite,
+        rotate 20s linear infinite;
+}
+
+/* ---------------- Title ---------------- */
+
+h1{
+    font-size:7rem;
+    letter-spacing:-5px;
+    font-weight:700;
+    line-height:1;
+}
+
+h1 span{
+    background:
+        linear-gradient(
+            135deg,
+            #00F5FF,
+            #8B5CF6,
+            #A855F7
+        );
+    -webkit-background-clip:text;
+    color:transparent;
+}
+
+p{
+    margin-top:18px;
+    font-size:1.3rem;
+    color:rgba(255,255,255,.65);
+    text-align:center;
+    line-height:1.8;
+    margin-bottom:55px;
+}
+
+/* ---------------- Buttons ---------------- */
+
+.buttons{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    width:370px;
+    max-width:90vw;
+}
+
+.buttons a{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 28px;
+    text-decoration:none;
+    font-size:18px;
+    font-weight:500;
+    color:white;
+    border-radius:22px;
+    background:
+        rgba(255,255,255,.07);
+    backdrop-filter:blur(30px);
+    border:1px solid rgba(255,255,255,.12);
+    transition:.35s;
+    position:relative;
+    overflow:hidden;
+}
+
+.buttons a::before{
+    content:"";
+    position:absolute;
+    top:-120%;
+    left:-50%;
+    width:40%;
+    height:320%;
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,.18),
+            transparent
+        );
+    transform:rotate(25deg);
+    transition:.8s;
+}
+
+.buttons a:hover::before{
+    left:140%;
+}
+
+.buttons a:hover{
+    transform:translateY(-6px);
+    box-shadow:
+        0 0 35px rgba(34,211,238,.18);
+    border-color:
+        rgba(34,211,238,.4);
+}
+
+.buttons span{
+    font-size:24px;
+    transition:.3s;
+}
+
+.buttons a:hover span{
+    transform:translateX(8px);
+}
+
+/* ---------------- Footer ---------------- */
+
+.footer{
+    position:absolute;
+    bottom:35px;
+    font-size:13px;
+    letter-spacing:3px;
+    color:rgba(255,255,255,.28);
+}
+
+/* ---------------- Animations ---------------- */
+
+@keyframes pulse{
+    0%{transform:scale(1);}
+    50%{transform:scale(1.08);}
+    100%{transform:scale(1);}
+}
+
+@keyframes rotate{
+    from{rotate:0deg;}
+    to{rotate:360deg;}
+}
+
+@keyframes float1{
+    0%{transform:translate(0,0);}
+    50%{transform:translate(70px,40px);}
+    100%{transform:translate(0,0);}
+}
+
+@keyframes float2{
+    0%{transform:translate(0,0);}
+    50%{transform:translate(-70px,-40px);}
+    100%{transform:translate(0,0);}
+}
+
+/* ---------------- Responsive ---------------- */
+
+@media(max-width:768px){
+    h1{font-size:4.5rem;}
+    .circle{width:140px;height:140px;}
+    .buttons{width:90%;}
+}
